@@ -24,7 +24,9 @@ import {
   Plus,
   ArrowLeft,
   Sparkles,
-  Zap
+  Zap,
+  Menu,
+  X
 } from 'lucide-react';
 import { 
   db, auth, googleProvider, ADMIN_EMAIL, 
@@ -58,6 +60,7 @@ const App: React.FC = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [adminTab, setAdminTab] = useState('inbox');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   // Data State
   const [settings, setSettings] = useState<AppSettings>({
@@ -356,6 +359,23 @@ const App: React.FC = () => {
       )}
       <div className="absolute inset-0 z-[1] bg-gradient-to-t from-black via-transparent to-black/30 pointer-events-none" />
 
+      {/* --- NEW: Mobile Header --- */}
+      <header className="md:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-3 bg-black/30 backdrop-blur-md border-b border-white/5">
+         <div className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-cyan-400 tracking-tighter">
+            AHMED PULSE
+         </div>
+         <div className="flex items-center gap-3">
+            {isAdmin && (
+                <button onClick={() => setShowAdminModal(true)} className="text-cyan-400/80 hover:text-cyan-400">
+                    <Shield size={20} />
+                </button>
+            )}
+            <div className="w-8 h-8 rounded-full bg-cyan-500/10 flex items-center justify-center border border-cyan-500/20">
+               <div className="w-2 h-2 bg-cyan-400 rounded-full animate-ping" />
+            </div>
+         </div>
+      </header>
+
       {/* Sidebar - Desktop */}
       <aside className="hidden md:flex w-64 glass border-l border-white/10 z-50 flex-col p-8 transition-all">
         <div className="mb-10">
@@ -396,13 +416,13 @@ const App: React.FC = () => {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 h-full relative z-10 overflow-y-auto px-4 md:px-12 pt-8 pb-40 scroll-smooth no-scrollbar">
+      <main className="flex-1 h-full relative z-10 overflow-y-auto px-4 md:px-12 pt-20 md:pt-8 pb-40 scroll-smooth no-scrollbar">
         <div className="max-w-6xl mx-auto">
           
           {/* Home Section */}
           <section className={`${activeTab === 'home' ? 'block' : 'hidden'} animate-fade-in`}>
             {/* Hero Section: Text + Optional Song */}
-            <div className="min-h-[40vh] flex flex-col items-center justify-center text-center mt-12 mb-20">
+            <div className="min-h-[40vh] flex flex-col items-center justify-center text-center mt-8 md:mt-12 mb-20">
               
               {/* 1. Welcome Text (Always Visible) */}
               <h2 className="text-5xl md:text-8xl font-black text-white mb-8 drop-shadow-2xl leading-tight px-4 arabic-text-container">
@@ -1111,6 +1131,8 @@ const AdminNavBtn: React.FC<{ active: boolean; onClick: () => void; icon: React.
     <span className="hidden md:inline">{label}</span>
   </button>
 );
+
+// Register Service Worker for PWA
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
