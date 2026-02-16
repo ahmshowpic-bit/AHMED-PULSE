@@ -1,14 +1,12 @@
 {
   "name": "AHMED PULSE | ULTIMATE",
   "short_name": "AhmedPulse",
-  "description": "تجربة موسيقية فريدة ومجتمع رقمي متكامل",
-  "lang": "ar",
-  "dir": "rtl",
+  "description": "A modern music library and community hub powered by Firebase.",
   "start_url": "/",
   "display": "standalone",
-  "orientation": "portrait",
   "background_color": "#050508",
   "theme_color": "#00f2ff",
+  "orientation": "portrait",
   "icons": [
     {
       "src": "/icon-192.png",
