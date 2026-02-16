@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   Home, 
@@ -102,6 +101,9 @@ const App: React.FC = () => {
   const [selectedFolder, setSelectedFolder] = useState('new');
   const [newFolderName, setNewFolderName] = useState('');
 
+  // Calculate Hero Song (The default song selected by admin)
+  const heroSong = useMemo(() => songs.find(s => s.id === settings.defaultSongId), [songs, settings.defaultSongId]);
+
   // Firebase Listeners
   useEffect(() => {
     // Auth
@@ -119,7 +121,7 @@ const App: React.FC = () => {
     if (!sessionStorage.getItem('visited')) {
       const vRef = ref(db, 'settings/visitorCount');
       runTransaction(vRef, (current) => (current || 0) + 1).catch(err => {
-        console.warn("Visitor count update failed (Permission Denied). Please update Firebase Rules.");
+        console.warn("Visitor count update failed. Check Firebase Rules.");
       });
       sessionStorage.setItem('visited', 'true');
     }
@@ -169,6 +171,15 @@ const App: React.FC = () => {
       unsubInbox();
     };
   }, []);
+
+  // Pre-load Default Song
+  useEffect(() => {
+    if (heroSong && !currentSong && audioRef.current) {
+        setCurrentSong(heroSong);
+        setPlaylist([heroSong]);
+        audioRef.current.src = heroSong.url;
+    }
+  }, [heroSong]);
 
   // Audio Handlers
   useEffect(() => {
@@ -317,14 +328,14 @@ const App: React.FC = () => {
     if (filterClass === 'mode-blur') filter = 'blur(20px) brightness(0.7)';
     if (filterClass === 'mode-vivid') filter = 'brightness(0.85) contrast(1.1)';
 
-    const url = settings.heroMode ? settings.heroImg : (currentSong?.image || settings.heroImg);
+    const url = settings.heroMode ? settings.heroImg : (heroSong?.image || currentSong?.image || settings.heroImg);
     
     return {
       backgroundImage: settings.heroType === 'image' ? `url(${url})` : 'none',
       backgroundSize: settings.bgFit,
       filter
     };
-  }, [settings, currentSong]);
+  }, [settings, currentSong, heroSong]);
 
   return (
     <div className="relative h-screen w-full flex overflow-hidden">
@@ -390,12 +401,60 @@ const App: React.FC = () => {
           
           {/* Home Section */}
           <section className={`${activeTab === 'home' ? 'block' : 'hidden'} animate-fade-in`}>
-            {/* Hero Welcome */}
+            {/* Hero Welcome or Default Song */}
             <div className="min-h-[40vh] flex flex-col items-center justify-center text-center mt-12 mb-20">
-              <h2 className="text-5xl md:text-8xl font-black text-white mb-6 drop-shadow-2xl leading-tight px-4 arabic-text-container">
-                {settings.welcome}
-              </h2>
-              <p className="text-white/60 text-lg md:text-xl font-medium max-w-2xl px-4">مرحباً بك في عالمي، حيث تجتمع الموسيقى والمجتمع في تجربة فريدة</p>
+              {heroSong ? (
+                // Display Default Song (Hero Mode)
+                <div className="animate-fade-in flex flex-col items-center gap-6">
+                  <div className="relative group cursor-pointer" onClick={() => playSong(heroSong, [heroSong])}>
+                    <div className="absolute inset-0 bg-cyan-500 rounded-full blur-xl opacity-20 group-hover:opacity-40 transition-opacity"></div>
+                    <img 
+                      src={heroSong.image} 
+                      alt={heroSong.name}
+                      className="w-40 h-40 md:w-56 md:h-56 rounded-full object-cover border-4 border-white/10 shadow-2xl relative z-10 group-hover:scale-105 transition-transform duration-500"
+                    />
+                    <div className="absolute inset-0 z-20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all">
+                       <div className="bg-black/50 backdrop-blur-sm rounded-full p-4">
+                         <Play fill="white" className="w-8 h-8 text-white" />
+                       </div>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <h2 className="text-4xl md:text-7xl font-black text-white mb-2 drop-shadow-2xl tracking-tighter">
+                      {heroSong.name}
+                    </h2>
+                    <p className="text-cyan-400 text-lg md:text-xl font-bold uppercase tracking-widest bg-cyan-500/10 px-4 py-1 rounded-full inline-block mt-2 border border-cyan-500/20">
+                      {heroSong.folder} | Featured Track
+                    </p>
+                  </div>
+                  
+                  <div className="flex gap-4 mt-4">
+                    <button 
+                      onClick={() => playSong(heroSong, [heroSong])}
+                      className="bg-white text-black px-8 py-3 rounded-full font-black hover:scale-105 transition-all flex items-center gap-2"
+                    >
+                      <Play size={20} fill="black" /> استمع الآن
+                    </button>
+                    {isAdmin && (
+                        <button 
+                        onClick={() => update(ref(db, 'settings'), { defaultSongId: null })}
+                        className="bg-white/10 text-white px-8 py-3 rounded-full font-bold hover:bg-white/20 transition-all border border-white/10"
+                        >
+                        إلغاء التثبيت
+                        </button>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                // Display Standard Welcome (Without the removed text)
+                <>
+                  <h2 className="text-5xl md:text-8xl font-black text-white mb-6 drop-shadow-2xl leading-tight px-4 arabic-text-container">
+                    {settings.welcome}
+                  </h2>
+                </>
+              )}
+
               <div className="md:hidden mt-8">
                 <VisitorBadge count={settings.visitorCount} visible={settings.showVisitorCount || isAdmin} />
               </div>
