@@ -401,11 +401,17 @@ const App: React.FC = () => {
           
           {/* Home Section */}
           <section className={`${activeTab === 'home' ? 'block' : 'hidden'} animate-fade-in`}>
-            {/* Hero Welcome or Default Song */}
+            {/* Hero Section: Text + Optional Song */}
             <div className="min-h-[40vh] flex flex-col items-center justify-center text-center mt-12 mb-20">
-              {heroSong ? (
-                // Display Default Song (Hero Mode)
-                <div className="animate-fade-in flex flex-col items-center gap-6">
+              
+              {/* 1. Welcome Text (Always Visible) */}
+              <h2 className="text-5xl md:text-8xl font-black text-white mb-8 drop-shadow-2xl leading-tight px-4 arabic-text-container">
+                {settings.welcome}
+              </h2>
+
+              {/* 2. Hero Song (Visible ONLY if selected) */}
+              {heroSong && (
+                <div className="animate-fade-in flex flex-col items-center gap-6 mb-8">
                   <div className="relative group cursor-pointer" onClick={() => playSong(heroSong, [heroSong])}>
                     <div className="absolute inset-0 bg-cyan-500 rounded-full blur-xl opacity-20 group-hover:opacity-40 transition-opacity"></div>
                     <img 
@@ -421,7 +427,7 @@ const App: React.FC = () => {
                   </div>
                   
                   <div>
-                    <h2 className="text-4xl md:text-7xl font-black text-white mb-2 drop-shadow-2xl tracking-tighter">
+                    <h2 className="text-3xl md:text-5xl font-black text-white mb-2 drop-shadow-2xl tracking-tighter">
                       {heroSong.name}
                     </h2>
                     <p className="text-cyan-400 text-lg md:text-xl font-bold uppercase tracking-widest bg-cyan-500/10 px-4 py-1 rounded-full inline-block mt-2 border border-cyan-500/20">
@@ -446,13 +452,6 @@ const App: React.FC = () => {
                     )}
                   </div>
                 </div>
-              ) : (
-                // Display Standard Welcome (Without the removed text)
-                <>
-                  <h2 className="text-5xl md:text-8xl font-black text-white mb-6 drop-shadow-2xl leading-tight px-4 arabic-text-container">
-                    {settings.welcome}
-                  </h2>
-                </>
               )}
 
               <div className="md:hidden mt-8">
