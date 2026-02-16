@@ -26,7 +26,8 @@ import {
   Sparkles,
   Zap,
   Menu,
-  X
+  X,
+  Download // تم إضافة أيقونة التثبيت
 } from 'lucide-react';
 import { 
   db, auth, googleProvider, ADMIN_EMAIL, 
@@ -61,6 +62,7 @@ const App: React.FC = () => {
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [adminTab, setAdminTab] = useState('inbox');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null); // حالة لحفظ حدث التثبيت
   
   // Data State
   const [settings, setSettings] = useState<AppSettings>({
@@ -106,6 +108,28 @@ const App: React.FC = () => {
 
   // Calculate Hero Song (The default song selected by admin)
   const heroSong = useMemo(() => songs.find(s => s.id === settings.defaultSongId), [songs, settings.defaultSongId]);
+
+  // Install Prompt Listener
+  useEffect(() => {
+    window.addEventListener('beforeinstallprompt', (e) => {
+      // Prevent the mini-infobar from appearing on mobile
+      e.preventDefault();
+      // Stash the event so it can be triggered later.
+      setDeferredPrompt(e);
+    });
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    // Show the install prompt
+    deferredPrompt.prompt();
+    // Wait for the user to respond to the prompt
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      console.log('User accepted the install prompt');
+      setDeferredPrompt(null);
+    }
+  };
 
   // Firebase Listeners
   useEffect(() => {
@@ -365,6 +389,17 @@ const App: React.FC = () => {
             AHMED PULSE
          </div>
          <div className="flex items-center gap-3">
+            {/* زر التثبيت الذكي - يظهر فقط إذا كان متاحاً */}
+            {deferredPrompt && (
+              <button 
+                onClick={handleInstallClick}
+                className="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-r from-purple-500 to-cyan-500 text-white shadow-lg animate-pulse"
+                title="تثبيت التطبيق"
+              >
+                <Download size={16} />
+              </button>
+            )}
+
             {isAdmin && (
                 <button onClick={() => setShowAdminModal(true)} className="text-cyan-400/80 hover:text-cyan-400">
                     <Shield size={20} />
