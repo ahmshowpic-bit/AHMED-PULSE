@@ -15,7 +15,7 @@ import {
   Heart, 
   Send, 
   ChevronRight, 
-  ChevronDown, 
+  ChevronDown, // زر إغلاق المشغل
   MoreHorizontal,
   Disc,
   FolderOpen,
@@ -29,8 +29,8 @@ import {
   Menu,
   X,
   Download,
-  Grid,
-  ListOrdered
+  Grid, // أيقونة القائمة الإضافية
+  ListOrdered // أيقونة الترتيب
 } from 'lucide-react';
 import { 
   db, auth, googleProvider, ADMIN_EMAIL, 
@@ -39,7 +39,7 @@ import {
 } from './firebase';
 import { Song, DiaryPost, ContactMessage, CustomPage, AppSettings, TabId } from './types';
 
-// Components defined outside
+// Components defined outside for better performance
 const VisitorBadge: React.FC<{ count: number; visible: boolean }> = ({ count, visible }) => {
   if (!visible) return null;
   return (
@@ -64,7 +64,7 @@ const App: React.FC = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [adminTab, setAdminTab] = useState('inbox');
-  const [isExtrasOpen, setIsExtrasOpen] = useState(false);
+  const [isExtrasOpen, setIsExtrasOpen] = useState(false); // القائمة السفلية الإضافية
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   
   // Data State
@@ -88,16 +88,18 @@ const App: React.FC = () => {
   
   // Audio State
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isPlayerExpanded, setIsPlayerExpanded] = useState(false);
+  const [isPlayerExpanded, setIsPlayerExpanded] = useState(false); // حالة توسيع المشغل
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
   const [playlist, setPlaylist] = useState<Song[]>([]);
   const [volume, setVolume] = useState(0.8);
   const [progress, setProgress] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Inputs
+  // Community Input State
   const [diaryName, setDiaryName] = useState('');
   const [diaryMsg, setDiaryMsg] = useState('');
+  
+  // Contact State
   const [contactName, setContactName] = useState('');
   const [contactMsg, setContactMsg] = useState('');
 
@@ -108,9 +110,10 @@ const App: React.FC = () => {
   const [selectedFolder, setSelectedFolder] = useState('new');
   const [newFolderName, setNewFolderName] = useState('');
 
+  // Calculate Hero Song
   const heroSong = useMemo(() => songs.find(s => s.id === settings.defaultSongId), [songs, settings.defaultSongId]);
 
-  // Install Prompt
+  // Install Prompt Listener
   useEffect(() => {
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
@@ -139,32 +142,43 @@ const App: React.FC = () => {
     });
 
     if (!sessionStorage.getItem('visited')) {
-      runTransaction(ref(db, 'settings/visitorCount'), (c) => (c || 0) + 1);
+      const vRef = ref(db, 'settings/visitorCount');
+      runTransaction(vRef, (current) => (current || 0) + 1);
       sessionStorage.setItem('visited', 'true');
     }
 
     const unsubMusic = onValue(ref(db, 'music'), (snap) => {
       const data: Song[] = [];
-      snap.forEach((child) => data.push({ id: child.key!, ...child.val() }));
+      snap.forEach((child) => {
+        data.push({ id: child.key!, ...child.val() });
+      });
       setSongs(data);
     });
 
     const unsubDiaries = onValue(ref(db, 'diaries'), (snap) => {
       const data: DiaryPost[] = [];
-      snap.forEach((child) => data.push({ id: child.key!, ...child.val() }));
+      snap.forEach((child) => {
+        data.push({ id: child.key!, ...child.val() });
+      });
       setDiaries(data.reverse());
     });
 
+    // Custom Pages (With Sorting)
     const unsubPages = onValue(ref(db, 'custom_pages'), (snap) => {
       const data: CustomPage[] = [];
-      snap.forEach((child) => data.push({ id: child.key!, ...child.val() }));
+      snap.forEach((child) => {
+        data.push({ id: child.key!, ...child.val() });
+      });
+      // ترتيب الصفحات بناءً على حقل order
       data.sort((a: any, b: any) => (parseInt(a.order) || 999) - (parseInt(b.order) || 999));
       setCustomPages(data);
     });
 
     const unsubInbox = onValue(ref(db, 'inbox'), (snap) => {
       const data: ContactMessage[] = [];
-      snap.forEach((child) => data.push({ id: child.key!, ...child.val() }));
+      snap.forEach((child) => {
+        data.push({ id: child.key!, ...child.val() });
+      });
       setMessages(data);
     });
 
@@ -173,7 +187,7 @@ const App: React.FC = () => {
     };
   }, []);
 
-  // Pre-load
+  // Pre-load Default Song
   useEffect(() => {
     if (heroSong && !currentSong && audioRef.current) {
         setCurrentSong(heroSong);
@@ -182,19 +196,24 @@ const App: React.FC = () => {
     }
   }, [heroSong]);
 
+  // Audio Handlers
   useEffect(() => {
-    if (audioRef.current) audioRef.current.volume = volume;
+    if (audioRef.current) {
+      audioRef.current.volume = volume;
+    }
   }, [volume]);
 
-  // Player Functions
   const togglePlay = (e?: React.MouseEvent) => {
     e?.stopPropagation();
     if (!audioRef.current) return;
     if (isPlaying) {
       audioRef.current.pause();
     } else {
-      if (!audioRef.current.src && songs.length > 0) playSong(songs[0], songs);
-      else audioRef.current.play().then(() => setIsPlaying(true)).catch(console.error);
+      if (!audioRef.current.src && songs.length > 0) {
+        playSong(songs[0], songs);
+      } else {
+        audioRef.current.play().then(() => setIsPlaying(true)).catch(console.error);
+      }
     }
     setIsPlaying(!isPlaying);
   };
@@ -210,21 +229,25 @@ const App: React.FC = () => {
   const nextSong = (e?: React.MouseEvent) => {
     e?.stopPropagation();
     if (!currentSong || playlist.length === 0) return;
-    const idx = playlist.findIndex(s => s.id === currentSong.id);
-    playSong(playlist[(idx + 1) % playlist.length], playlist);
+    const currentIndex = playlist.findIndex(s => s.id === currentSong.id);
+    const nextIndex = (currentIndex + 1) % playlist.length;
+    playSong(playlist[nextIndex], playlist);
   };
 
   const prevSong = (e?: React.MouseEvent) => {
     e?.stopPropagation();
     if (!currentSong || playlist.length === 0) return;
-    const idx = playlist.findIndex(s => s.id === currentSong.id);
-    playSong(playlist[(idx - 1 + playlist.length) % playlist.length], playlist);
+    const currentIndex = playlist.findIndex(s => s.id === currentSong.id);
+    const prevIndex = (currentIndex - 1 + playlist.length) % playlist.length;
+    playSong(playlist[prevIndex], playlist);
   };
 
   const onTimeUpdate = () => {
     if (!audioRef.current) return;
     const { currentTime, duration } = audioRef.current;
-    if (duration) setProgress((currentTime / duration) * 100);
+    if (duration) {
+      setProgress((currentTime / duration) * 100);
+    }
   };
 
   const onSeek = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -232,10 +255,11 @@ const App: React.FC = () => {
     if (!audioRef.current || !audioRef.current.duration) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
-    audioRef.current.currentTime = (x / rect.width) * audioRef.current.duration;
+    const percentage = x / rect.width;
+    audioRef.current.currentTime = percentage * audioRef.current.duration;
   };
 
-  // Groups & Data
+  // Grouped Songs
   const folders = useMemo(() => {
     const map: Record<string, Song[]> = {};
     songs.forEach(s => {
@@ -257,55 +281,58 @@ const App: React.FC = () => {
         await signOut(auth);
         alert("وصول مقيد للمسؤول فقط.");
       }
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const postDiaryEntry = () => {
     if (!diaryMsg.trim()) return;
-    push(ref(db, 'diaries'), {
+    const postData = {
       name: (isAdmin && confirm("نشر كمسؤول؟")) ? "AHMED PULSE" : (diaryName || "مجهول"),
       text: diaryMsg,
       verified: isAdmin,
       date: new Date().toLocaleDateString('ar-EG'),
       likes: 0
-    });
+    };
+    push(ref(db, 'diaries'), postData);
     setDiaryMsg('');
   };
 
-  const likePost = (id: string) => runTransaction(ref(db, `diaries/${id}/likes`), (l) => (l || 0) + 1);
+  const likePost = (id: string) => {
+    runTransaction(ref(db, `diaries/${id}/likes`), (likes) => (likes || 0) + 1);
+  };
 
   const sendMessage = () => {
     if (!contactMsg.trim()) return;
     push(ref(db, 'inbox'), { name: contactName || "مجهول", msg: contactMsg }).then(() => {
-      setContactMsg(''); setContactName(''); alert("تم الإرسال!");
+      setContactMsg(''); setContactName(''); alert("تم الإرسال بنجاح!");
     });
   };
 
   const addMusicAdmin = () => {
     const folder = selectedFolder === 'new' ? newFolderName : selectedFolder;
-    if (!folder || !newSongTitle || !newSongUrl) return alert("البيانات ناقصة");
+    if (!folder || !newSongTitle || !newSongUrl) return alert("يرجى إكمال البيانات");
     push(ref(db, 'music'), {
-      name: newSongTitle, url: newSongUrl, image: newSongImg || "https://picsum.photos/400/400", folder
+      name: newSongTitle,
+      url: newSongUrl,
+      image: newSongImg || "https://picsum.photos/400/400",
+      folder
     }).then(() => {
-      setNewSongTitle(''); setNewSongUrl(''); setNewSongImg(''); alert("تم!");
+      setNewSongTitle(''); setNewSongUrl(''); setNewSongImg(''); alert("تمت الإضافة!");
     });
   };
 
-  // --- دالة التنقل الذكية الموحدة ---
-  // هذه الدالة هي الحل: تغلق المشغل والقوائم عند الانتقال لأي تبويب
-  const navigateTo = (tab: TabId) => {
-    setActiveTab(tab);
-    setIsPlayerExpanded(false); // إغلاق المشغل الكبير فوراً
-    setIsExtrasOpen(false);     // إغلاق القائمة السفلية
-  };
-
+  // Background Logic
   const backgroundStyle = useMemo(() => {
     const filterClass = settings.bgFilter || 'mode-vivid';
     let filter = '';
     if (filterClass === 'mode-dark') filter = 'brightness(0.3)';
     if (filterClass === 'mode-blur') filter = 'blur(20px) brightness(0.7)';
     if (filterClass === 'mode-vivid') filter = 'brightness(0.85) contrast(1.1)';
+
     const url = settings.heroMode ? settings.heroImg : (heroSong?.image || currentSong?.image || settings.heroImg);
+    
     return {
       backgroundImage: settings.heroType === 'image' ? `url(${url})` : 'none',
       backgroundSize: settings.bgFit,
@@ -313,9 +340,19 @@ const App: React.FC = () => {
     };
   }, [settings, currentSong, heroSong]);
 
+  // وظيفة تغيير التاب مع إغلاق المشغل الموسعة وكل القوائم
+  const handleTabChange = (tab: TabId) => {
+    setActiveTab(tab);
+    setIsPlayerExpanded(false);
+    setIsExtrasOpen(false);
+  };
+
+  // وظيفة العودة للرئيسية
+  const goHome = () => handleTabChange('home');
+
   return (
     <div className="relative h-screen w-full flex overflow-hidden">
-      {/* Background */}
+      {/* Dynamic Background */}
       <div 
         className={`absolute inset-0 z-0 transition-all duration-1000 bg-center bg-no-repeat ${settings.animType === 'zoom-in' ? 'anim-zoom-in' : ''}`}
         style={backgroundStyle}
@@ -325,9 +362,12 @@ const App: React.FC = () => {
       )}
       <div className="absolute inset-0 z-[1] bg-gradient-to-t from-black via-transparent to-black/30 pointer-events-none" />
 
-      {/* Header Mobile */}
-      <header className="md:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-3 bg-black/30 backdrop-blur-md border-b border-white/5">
-         <div onClick={() => navigateTo('home')} className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-cyan-400 tracking-tighter cursor-pointer">
+      {/* --- Mobile Header --- */}
+      <header className="md:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-3 bg-black/30 backdrop-blur-md border-b border-white/5 transition-transform duration-300">
+         <div 
+            onClick={goHome}
+            className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-cyan-400 tracking-tighter cursor-pointer"
+         >
             AHMED PULSE
          </div>
          <div className="flex items-center gap-3">
@@ -337,7 +377,9 @@ const App: React.FC = () => {
               </button>
             )}
             {isAdmin && (
-                <button onClick={() => setShowAdminModal(true)} className="text-cyan-400/80 hover:text-cyan-400"><Shield size={20} /></button>
+                <button onClick={() => setShowAdminModal(true)} className="text-cyan-400/80 hover:text-cyan-400">
+                    <Shield size={20} />
+                </button>
             )}
             <div className="w-8 h-8 rounded-full bg-cyan-500/10 flex items-center justify-center border border-cyan-500/20">
                <div className="w-2 h-2 bg-cyan-400 rounded-full animate-ping" />
@@ -345,62 +387,101 @@ const App: React.FC = () => {
          </div>
       </header>
 
-      {/* Sidebar Desktop */}
+      {/* Sidebar - Desktop */}
       <aside className="hidden md:flex w-64 glass border-l border-white/10 z-50 flex-col p-8 transition-all">
-        <div className="mb-10 cursor-pointer" onClick={() => navigateTo('home')}>
-          <h1 className="text-3xl font-black bg-gradient-to-br from-white to-cyan-400 bg-clip-text text-transparent tracking-tighter">AHMED PULSE</h1>
+        <div className="mb-10 cursor-pointer" onClick={goHome}>
+          <h1 className="text-3xl font-black bg-gradient-to-br from-white to-cyan-400 bg-clip-text text-transparent tracking-tighter">
+            AHMED PULSE
+          </h1>
         </div>
-        <div className="mb-8"><VisitorBadge count={settings.visitorCount} visible={settings.showVisitorCount || isAdmin} /></div>
+
+        <div className="mb-8">
+          <VisitorBadge count={settings.visitorCount} visible={settings.showVisitorCount || isAdmin} />
+        </div>
+
         <nav className="flex-1 space-y-2 overflow-y-auto no-scrollbar">
-          <SidebarBtn active={activeTab === 'home'} onClick={() => navigateTo('home')} icon={<Home />} label="الرئيسية" />
-          <SidebarBtn active={activeTab === 'music'} onClick={() => navigateTo('music')} icon={<MusicIcon />} label="الصوتيات" />
-          <SidebarBtn active={activeTab === 'diaries'} onClick={() => navigateTo('diaries')} icon={<Users />} label="المجتمع" />
-          <SidebarBtn active={activeTab === 'contact'} onClick={() => navigateTo('contact')} icon={<Mail />} label="تواصل معي" />
+          <SidebarBtn active={activeTab === 'home'} onClick={goHome} icon={<Home />} label="الرئيسية" />
+          <SidebarBtn active={activeTab === 'music'} onClick={() => handleTabChange('music')} icon={<MusicIcon />} label="الصوتيات" />
+          <SidebarBtn active={activeTab === 'diaries'} onClick={() => handleTabChange('diaries')} icon={<Users />} label="المجتمع" />
+          <SidebarBtn active={activeTab === 'contact'} onClick={() => handleTabChange('contact')} icon={<Mail />} label="تواصل معي" />
+          
           {customPages.length > 0 && <div className="h-px bg-white/10 my-4" />}
+          
           {customPages.map(page => (
-            <SidebarBtn key={page.id} active={activeTab === page.id} onClick={() => navigateTo(page.id)} icon={<Zap size={18} className="text-purple-400" />} label={page.title} />
+            <SidebarBtn 
+              key={page.id} 
+              active={activeTab === page.id} 
+              onClick={() => handleTabChange(page.id as TabId)} 
+              icon={<Zap size={18} className="text-purple-400" />} 
+              label={page.title} 
+            />
           ))}
         </nav>
+
         <div className="mt-auto flex justify-center pt-4">
-          <button onClick={() => isAdmin ? setShowAdminModal(true) : handleLogin()} className="text-white/20 hover:text-cyan-400 transition-colors"><Shield size={24} /></button>
+          <button onClick={() => isAdmin ? setShowAdminModal(true) : handleLogin()} className="text-white/20 hover:text-cyan-400 transition-colors">
+            <Shield size={24} />
+          </button>
         </div>
       </aside>
 
-      {/* Content */}
+      {/* Main Content */}
       <main className="flex-1 h-full relative z-10 overflow-y-auto px-4 md:px-12 pt-20 md:pt-8 pb-40 scroll-smooth no-scrollbar">
         <div className="max-w-6xl mx-auto">
-          {/* Home */}
+          
+          {/* Home Section */}
           <section className={`${activeTab === 'home' ? 'block' : 'hidden'} animate-fade-in`}>
             <div className="min-h-[40vh] flex flex-col items-center justify-center text-center mt-8 md:mt-12 mb-20">
-              <h2 className="text-4xl md:text-8xl font-black text-white mb-8 drop-shadow-2xl leading-tight px-4 break-words max-w-full">
+              {/* تصحيح النص لعدم الخروج عن الشاشة */}
+              <h2 className="text-3xl md:text-7xl font-black text-white mb-8 drop-shadow-2xl leading-tight px-4 w-full max-w-full text-center break-words overflow-hidden" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
                 {settings.welcome}
               </h2>
               {heroSong && (
                 <div className="animate-fade-in flex flex-col items-center gap-6 mb-8">
                   <div className="relative group cursor-pointer" onClick={() => playSong(heroSong, [heroSong])}>
                     <div className="absolute inset-0 bg-cyan-500 rounded-full blur-xl opacity-20 group-hover:opacity-40 transition-opacity"></div>
-                    <img src={heroSong.image} className="w-40 h-40 md:w-56 md:h-56 rounded-full object-cover border-4 border-white/10 shadow-2xl relative z-10 group-hover:scale-105 transition-transform duration-500" />
+                    <img 
+                      src={heroSong.image} 
+                      alt={heroSong.name}
+                      className="w-40 h-40 md:w-56 md:h-56 rounded-full object-cover border-4 border-white/10 shadow-2xl relative z-10 group-hover:scale-105 transition-transform duration-500"
+                    />
                     <div className="absolute inset-0 z-20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all">
-                       <div className="bg-black/50 backdrop-blur-sm rounded-full p-4"><Play fill="white" className="w-8 h-8 text-white" /></div>
+                       <div className="bg-black/50 backdrop-blur-sm rounded-full p-4">
+                         <Play fill="white" className="w-8 h-8 text-white" />
+                       </div>
                     </div>
                   </div>
-                  <div className="max-w-full px-4">
-                    <h2 className="text-2xl md:text-5xl font-black text-white mb-2 drop-shadow-2xl tracking-tighter truncate">{heroSong.name}</h2>
-                    <p className="text-cyan-400 text-sm md:text-xl font-bold uppercase tracking-widest bg-cyan-500/10 px-4 py-1 rounded-full inline-block mt-2 border border-cyan-500/20">{heroSong.folder} | Featured Track</p>
+                  <div className="max-w-full px-4 w-full text-center overflow-hidden">
+                    <h2 className="text-2xl md:text-5xl font-black text-white mb-2 drop-shadow-2xl tracking-tighter truncate max-w-full">
+                      {heroSong.name}
+                    </h2>
+                    <p className="text-cyan-400 text-sm md:text-xl font-bold uppercase tracking-widest bg-cyan-500/10 px-4 py-1 rounded-full inline-block mt-2 border border-cyan-500/20">
+                      {heroSong.folder} | Featured Track
+                    </p>
                   </div>
                   <div className="flex gap-4 mt-4">
-                    <button onClick={() => playSong(heroSong, [heroSong])} className="bg-white text-black px-8 py-3 rounded-full font-black hover:scale-105 transition-all flex items-center gap-2"><Play size={20} fill="black" /> استمع الآن</button>
-                    {isAdmin && <button onClick={() => update(ref(db, 'settings'), { defaultSongId: null })} className="bg-white/10 text-white px-8 py-3 rounded-full font-bold hover:bg-white/20 transition-all border border-white/10">إلغاء التثبيت</button>}
+                    <button onClick={() => playSong(heroSong, [heroSong])} className="bg-white text-black px-8 py-3 rounded-full font-black hover:scale-105 transition-all flex items-center gap-2">
+                      <Play size={20} fill="black" /> استمع الآن
+                    </button>
+                    {isAdmin && (
+                        <button onClick={() => update(ref(db, 'settings'), { defaultSongId: null })} className="bg-white/10 text-white px-8 py-3 rounded-full font-bold hover:bg-white/20 transition-all border border-white/10">
+                        إلغاء التثبيت
+                        </button>
+                    )}
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Featured */}
+            {/* Featured Songs Carousel */}
             <div className="mb-16">
               <div className="flex items-center justify-between mb-6 px-2">
-                <h3 className="text-2xl font-black flex items-center gap-3"><Sparkles className="text-yellow-400" /> مختارات صوتية</h3>
-                <button onClick={() => navigateTo('music')} className="text-cyan-400 text-sm font-bold flex items-center gap-1 hover:underline">عرض الكل <ChevronRight size={16} /></button>
+                <h3 className="text-2xl font-black flex items-center gap-3">
+                  <Sparkles className="text-yellow-400" /> مختارات صوتية
+                </h3>
+                <button onClick={() => handleTabChange('music')} className="text-cyan-400 text-sm font-bold flex items-center gap-1 hover:underline">
+                  عرض الكل <ChevronRight size={16} />
+                </button>
               </div>
               <div className="carousel-container flex gap-6 overflow-x-auto no-scrollbar pb-6 px-2">
                 {featuredSongs.map(song => (
@@ -409,7 +490,9 @@ const App: React.FC = () => {
                       <div className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110" style={{ backgroundImage: `url(${song.image})` }} />
                       <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-60" />
                       <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                         <div className="w-16 h-16 rounded-full bg-cyan-500 flex items-center justify-center text-black shadow-2xl scale-75 group-hover:scale-100 transition-transform"><Play fill="currentColor" size={28} className="ml-1" /></div>
+                         <div className="w-16 h-16 rounded-full bg-cyan-500 flex items-center justify-center text-black shadow-2xl scale-75 group-hover:scale-100 transition-transform">
+                            <Play fill="currentColor" size={28} className="ml-1" />
+                         </div>
                       </div>
                     </div>
                     <div className="p-6">
@@ -421,11 +504,15 @@ const App: React.FC = () => {
               </div>
             </div>
 
-            {/* Community Preview */}
+            {/* Community Highlights */}
             <div className="mb-16">
               <div className="flex items-center justify-between mb-6 px-2">
-                <h3 className="text-2xl font-black flex items-center gap-3"><Zap className="text-purple-400" /> نبض المجتمع</h3>
-                <button onClick={() => navigateTo('diaries')} className="text-cyan-400 text-sm font-bold flex items-center gap-1 hover:underline">انضم إلينا <ChevronRight size={16} /></button>
+                <h3 className="text-2xl font-black flex items-center gap-3">
+                  <Zap className="text-purple-400" /> نبض المجتمع
+                </h3>
+                <button onClick={() => handleTabChange('diaries')} className="text-cyan-400 text-sm font-bold flex items-center gap-1 hover:underline">
+                  انضم إلينا <ChevronRight size={16} />
+                </button>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 px-2">
                 {latestDiaries.map(post => (
@@ -445,12 +532,14 @@ const App: React.FC = () => {
             </div>
           </section>
 
-          {/* Music Tab */}
+          {/* Music Section */}
           <section className={`${activeTab === 'music' ? 'block' : 'hidden'}`}>
             <h2 className="text-4xl font-black mb-12 mt-8 flex items-center gap-4"><MusicIcon className="text-cyan-400" size={36} /> المكتبة الصوتية</h2>
             {currentFolder ? (
               <div className="space-y-4">
-                <button onClick={() => setCurrentFolder(null)} className="flex items-center gap-2 text-white/60 hover:text-white mb-6 transition-all bg-white/5 px-4 py-2 rounded-full border border-white/10"><ArrowLeft size={18} /> رجوع للمجلدات</button>
+                <button onClick={() => setCurrentFolder(null)} className="flex items-center gap-2 text-white/60 hover:text-white mb-6 transition-all bg-white/5 px-4 py-2 rounded-full border border-white/10">
+                  <ArrowLeft size={18} /> رجوع للمجلدات
+                </button>
                 <h3 className="text-3xl font-black text-cyan-400 mb-8 border-r-4 border-cyan-400 pr-4">{currentFolder}</h3>
                 <div className="grid gap-3">
                   {folders[currentFolder]?.map((song) => (
@@ -479,7 +568,7 @@ const App: React.FC = () => {
             )}
           </section>
 
-          {/* Diaries Tab */}
+          {/* Diaries Section */}
           <section className={`${activeTab === 'diaries' ? 'block' : 'hidden'}`}>
             <h2 className="text-4xl font-black mb-12 mt-8 flex items-center gap-4"><Users className="text-cyan-400" size={36} /> المجتمع الرقمي</h2>
             <div className="glass border border-white/10 p-8 rounded-[3rem] mb-12 shadow-2xl relative overflow-hidden">
@@ -487,9 +576,9 @@ const App: React.FC = () => {
               <div className="relative z-10">
                 <div className="grid md:grid-cols-2 gap-4 mb-4">
                   <input value={diaryName} onChange={e => setDiaryName(e.target.value)} placeholder="اسمك المستعار" className="bg-black/40 border border-white/10 p-5 rounded-2xl text-white placeholder:text-white/20 font-bold" maxLength={20} />
-                  <div className="flex items-center gap-3 px-4 py-2 rounded-2xl bg-white/5 border border-white/5"><Sparkles size={20} className="text-yellow-400" /><span className="text-xs text-white/40">شاركنا لحظاتك.</span></div>
+                  <div className="flex items-center gap-3 px-4 py-2 rounded-2xl bg-white/5 border border-white/5"><Sparkles size={20} className="text-yellow-400" /><span className="text-xs text-white/40">شاركنا لحظاتك المميزة.</span></div>
                 </div>
-                <textarea value={diaryMsg} onChange={e => setDiaryMsg(e.target.value)} placeholder="ما الذي يدور في ذهنك؟" rows={4} className="w-full bg-black/40 border border-white/10 p-6 rounded-[2rem] mb-6 text-white placeholder:text-white/20 resize-none text-lg leading-relaxed" />
+                <textarea value={diaryMsg} onChange={e => setDiaryMsg(e.target.value)} placeholder="ما الذي يدور في ذهنك اليوم؟" rows={4} className="w-full bg-black/40 border border-white/10 p-6 rounded-[2rem] mb-6 text-white placeholder:text-white/20 resize-none text-lg leading-relaxed" />
                 <button onClick={postDiaryEntry} className="w-full md:w-auto px-12 py-5 bg-gradient-to-r from-cyan-500 to-purple-600 rounded-full font-black text-lg shadow-2xl shadow-cyan-500/20 hover:scale-[1.05] active:scale-95 transition-all flex items-center justify-center gap-3 float-left">نشر الآن <Send size={20} /></button>
                 <div className="clear-both" />
               </div>
@@ -515,7 +604,7 @@ const App: React.FC = () => {
             </div>
           </section>
 
-          {/* Contact Tab */}
+          {/* Contact Section */}
           <section className={`${activeTab === 'contact' ? 'block' : 'hidden'}`}>
             <div className="max-w-2xl mx-auto glass border border-white/10 p-12 rounded-[4rem] text-center shadow-2xl mt-8">
               <div className="w-24 h-24 bg-cyan-500/10 rounded-[2rem] flex items-center justify-center text-cyan-400 mx-auto mb-8 shadow-inner"><Mail size={48} /></div>
@@ -525,6 +614,8 @@ const App: React.FC = () => {
                 <textarea value={contactMsg} onChange={e => setContactMsg(e.target.value)} placeholder="بماذا تود أن تخبرني؟" rows={6} className="w-full bg-black/60 border border-white/10 p-6 rounded-[2.5rem] text-white resize-none text-center text-lg" />
                 <button onClick={sendMessage} className="w-full py-6 bg-gradient-to-r from-cyan-500 via-blue-600 to-purple-600 rounded-full font-black text-xl shadow-2xl shadow-cyan-500/30">إرسال الرسالة الآن</button>
               </div>
+
+              {/* استعادة زر البصمة الخفي (Admin Trigger) */}
               <div className="mt-16 opacity-5 hover:opacity-100 transition-opacity">
                 <button onClick={() => isAdmin ? setShowAdminModal(true) : handleLogin()}>
                   <Fingerprint size={32} className="mx-auto text-white cursor-pointer" />
@@ -543,7 +634,7 @@ const App: React.FC = () => {
         </div>
       </main>
 
-      {/* --- Smart Player --- */}
+      {/* --- Smart Expandable Player --- */}
       <div 
         onClick={() => setIsPlayerExpanded(true)}
         className={`fixed transition-all duration-700 ease-in-out border border-white/10 shadow-2xl z-[100]
@@ -554,6 +645,7 @@ const App: React.FC = () => {
           ${isPlaying && !isPlayerExpanded ? 'playing ring-2 ring-cyan-500/20' : ''}
         `}
       >
+        {/* زر إغلاق المشغل الكبير */}
         {isPlayerExpanded && (
           <button 
             onClick={(e) => { e.stopPropagation(); setIsPlayerExpanded(false); }}
@@ -563,7 +655,10 @@ const App: React.FC = () => {
           </button>
         )}
 
+        {/* حاوية المشغل */}
         <div className={`flex w-full ${isPlayerExpanded ? 'flex-col items-center gap-12 max-w-md' : 'flex-row items-center gap-4'}`}>
+          
+          {/* شريط التقدم الصغير (يظهر فقط في الوضع المصغر) */}
           {!isPlayerExpanded && (
             <div className="absolute top-0 left-10 right-10 h-1 cursor-pointer group" onClick={onSeek}>
               <div className="w-full h-full bg-white/10 rounded-full overflow-hidden relative">
@@ -572,7 +667,9 @@ const App: React.FC = () => {
             </div>
           )}
 
+          {/* صورة الأغنية */}
           <div className="relative">
+             {/* تأثير النبض بدون دوران */}
              {isPlayerExpanded && isPlaying && (
                <>
                  <div className="absolute inset-0 rounded-2xl border-2 border-cyan-500/30 animate-ping opacity-20" style={{ animationDuration: '2s' }}></div>
@@ -582,30 +679,34 @@ const App: React.FC = () => {
              <div 
                 className={`bg-cover bg-center border border-white/10 shadow-2xl transition-all duration-700
                   ${isPlayerExpanded 
-                    ? 'w-64 h-64 md:w-80 md:h-80 rounded-[2rem] shadow-[0_0_50px_rgba(6,182,212,0.3)]' 
-                    : `w-14 h-14 rounded-2xl ${isPlaying ? 'rotate-3 scale-110' : ''}`
+                    ? 'w-64 h-64 md:w-80 md:h-80 rounded-[2rem] shadow-[0_0_50px_rgba(6,182,212,0.3)]' // إزالة الدوران
+                    : `w-14 h-14 rounded-2xl ${isPlaying ? 'rotate-3 scale-110' : ''}` // حركة بسيطة جدا في المصغر
                   }
-                  ${isPlaying && isPlayerExpanded ? 'scale-105' : ''}
+                  ${isPlaying && isPlayerExpanded ? 'scale-105' : ''} // نبض خفيف عند التشغيل
                 `}
                 style={{ backgroundImage: `url(${currentSong?.image || "https://picsum.photos/200/200"})` }}
              />
           </div>
 
-          <div className={`overflow-hidden text-center ${!isPlayerExpanded ? 'text-right flex-1' : 'w-full px-4'}`}>
-            <div className={`font-black text-white ${isPlayerExpanded ? 'text-2xl md:text-3xl mb-4 leading-snug whitespace-normal break-words' : 'text-sm md:text-lg max-w-[150px] truncate'}`}>
-              {currentSong?.name || "اختر أغنية"}
-            </div>
+          {/* معلومات الأغنية */}
+          <div className={`overflow-hidden text-center ${!isPlayerExpanded ? 'text-right flex-1 min-w-0' : ''}`}>
+            <div className={`font-black truncate text-white ${isPlayerExpanded ? 'text-3xl mb-2' : 'text-sm md:text-lg'}`}>{currentSong?.name || "اختر أغنية"}</div>
             <div className={`font-bold text-cyan-400 uppercase tracking-widest ${isPlayerExpanded ? 'text-lg' : 'text-[10px] opacity-60'}`}>{currentSong?.folder || "READY"}</div>
           </div>
 
+          {/* أزرار التحكم */}
           <div className={`flex items-center ${isPlayerExpanded ? 'gap-12' : 'gap-4 md:gap-8'}`}>
             <button onClick={prevSong} className={`text-white/40 hover:text-white transition-all transform active:scale-90 ${isPlayerExpanded ? 'scale-150' : ''}`}><SkipBack size={28} /></button>
-            <button onClick={togglePlay} className={`rounded-full bg-white text-black flex items-center justify-center shadow-2xl shadow-white/10 hover:scale-110 active:scale-90 transition-all ${isPlayerExpanded ? 'w-24 h-24' : 'w-14 h-14'}`}>
+            <button 
+              onClick={togglePlay}
+              className={`rounded-full bg-white text-black flex items-center justify-center shadow-2xl shadow-white/10 hover:scale-110 active:scale-90 transition-all ${isPlayerExpanded ? 'w-24 h-24' : 'w-14 h-14'}`}
+            >
               {isPlaying ? <Pause size={isPlayerExpanded ? 40 : 28} fill="currentColor" /> : <Play size={isPlayerExpanded ? 40 : 28} fill="currentColor" className="ml-1" />}
             </button>
             <button onClick={nextSong} className={`text-white/40 hover:text-white transition-all transform active:scale-90 ${isPlayerExpanded ? 'scale-150' : ''}`}><SkipForward size={28} /></button>
           </div>
 
+          {/* شريط التقدم الكبير (يظهر فقط في الوضع المكبر) */}
           {isPlayerExpanded && (
             <div className="w-full space-y-2 group cursor-pointer" onClick={onSeek}>
                <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
@@ -617,13 +718,15 @@ const App: React.FC = () => {
                </div>
             </div>
           )}
+
         </div>
       </div>
 
-      {/* Nav Mobile */}
+      {/* --- Mobile Bottom Navigation --- */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 h-20 glass border-t border-white/10 z-[150] flex items-center justify-around px-4 bg-black/80 backdrop-blur-3xl">
-        <MobNavBtn active={activeTab === 'home'} onClick={() => navigateTo('home')} icon={<Home />} label="الرئيسية" />
-        <MobNavBtn active={activeTab === 'music'} onClick={() => navigateTo('music')} icon={<MusicIcon />} label="موسيقى" />
+        <MobNavBtn active={activeTab === 'home'} onClick={goHome} icon={<Home />} label="الرئيسية" />
+        <MobNavBtn active={activeTab === 'music'} onClick={() => handleTabChange('music')} icon={<MusicIcon />} label="موسيقى" />
+        {/* زر المزيد لفتح الصفحات الإضافية */}
         <div className="relative">
            <button 
              onClick={() => setIsExtrasOpen(!isExtrasOpen)}
@@ -632,22 +735,28 @@ const App: React.FC = () => {
              <Grid size={24} fill="white" />
            </button>
         </div>
-        <MobNavBtn active={activeTab === 'diaries'} onClick={() => navigateTo('diaries')} icon={<Users />} label="المجتمع" />
-        <MobNavBtn active={activeTab === 'contact'} onClick={() => navigateTo('contact')} icon={<Mail />} label="اتصل" />
+        <MobNavBtn active={activeTab === 'diaries'} onClick={() => handleTabChange('diaries')} icon={<Users />} label="المجتمع" />
+        <MobNavBtn active={activeTab === 'contact'} onClick={() => handleTabChange('contact')} icon={<Mail />} label="اتصل" />
       </nav>
 
-      {/* Extras Menu */}
+      {/* --- Mobile Extras Sheet (Pull-up Menu) --- */}
       <div className={`md:hidden fixed inset-x-0 bottom-24 z-[140] transition-all duration-500 ease-in-out transform ${isExtrasOpen ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0 pointer-events-none'}`}>
         <div className="bg-[#12121a]/95 backdrop-blur-xl border border-white/10 rounded-[2rem] mx-4 p-6 shadow-2xl shadow-cyan-500/10">
           <div className="text-center text-white/40 text-xs font-bold uppercase tracking-widest mb-6">تطبيقات إضافية</div>
           <div className="grid grid-cols-3 gap-4">
              {customPages.map(page => (
-               <button key={page.id} onClick={() => navigateTo(page.id)} className="flex flex-col items-center gap-3 p-3 rounded-2xl hover:bg-white/5 transition-colors">
-                 <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-white/10 to-white/5 border border-white/10 flex items-center justify-center text-cyan-400 shadow-lg"><Zap size={24} /></div>
+               <button 
+                 key={page.id}
+                 onClick={() => { handleTabChange(page.id as TabId); setIsExtrasOpen(false); }}
+                 className="flex flex-col items-center gap-3 p-3 rounded-2xl hover:bg-white/5 transition-colors"
+               >
+                 <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-white/10 to-white/5 border border-white/10 flex items-center justify-center text-cyan-400 shadow-lg">
+                    <Zap size={24} />
+                 </div>
                  <span className="text-xs font-bold text-white/80 truncate w-full text-center">{page.title}</span>
                </button>
              ))}
-             {customPages.length === 0 && <div className="col-span-3 text-center text-white/20 py-4">لا توجد صفحات</div>}
+             {customPages.length === 0 && <div className="col-span-3 text-center text-white/20 py-4">لا توجد صفحات إضافية حالياً</div>}
           </div>
         </div>
       </div>
@@ -657,9 +766,12 @@ const App: React.FC = () => {
         <div className="fixed inset-0 z-[1000] bg-black/95 backdrop-blur-2xl flex items-center justify-center p-4">
           <div className="w-full max-w-5xl h-[90vh] bg-[#0c0c12] border border-white/10 rounded-[3rem] flex flex-col overflow-hidden shadow-2xl ring-1 ring-white/10">
             <div className="p-8 border-b border-white/10 flex justify-between items-center bg-black/40">
-              <div className="flex items-center gap-4 text-cyan-400 font-black text-2xl"><Shield size={28} /> نظام الإدارة</div>
+              <div className="flex items-center gap-4 text-cyan-400 font-black text-2xl">
+                <Shield size={28} /> نظام الإدارة
+              </div>
               <button onClick={() => setShowAdminModal(false)} className="text-white/40 hover:text-white text-3xl">&times;</button>
             </div>
+            
             <div className="flex flex-1 overflow-hidden">
               <div className="w-24 md:w-60 bg-black/60 border-l border-white/5 flex flex-col p-4 gap-3">
                 <AdminNavBtn active={adminTab === 'inbox'} onClick={() => setAdminTab('inbox')} icon={<Mail />} label="الوارد" />
@@ -668,8 +780,9 @@ const App: React.FC = () => {
                 <AdminNavBtn active={adminTab === 'settings'} onClick={() => setAdminTab('settings')} icon={<Settings />} label="الإعدادات" />
                 <button onClick={() => { signOut(auth); setShowAdminModal(false); }} className="mt-auto flex items-center gap-4 p-4 text-red-400 hover:bg-red-400/10 rounded-2xl transition-all font-black"><LogOut size={24} /> خروج</button>
               </div>
+              
               <div className="flex-1 overflow-y-auto p-10 no-scrollbar">
-                {/* Inbox */}
+                {/* Inbox Tab */}
                 {adminTab === 'inbox' && (
                   <div className="space-y-6">
                     {messages.map(m => (
@@ -684,7 +797,8 @@ const App: React.FC = () => {
                     ))}
                   </div>
                 )}
-                {/* Music */}
+
+                {/* Music Tab */}
                 {adminTab === 'music' && (
                   <div>
                     <div className="bg-white/5 p-8 rounded-[3rem] mb-12 space-y-4 shadow-xl">
@@ -692,7 +806,7 @@ const App: React.FC = () => {
                         <option value="new">++ مجلد جديد ++</option>
                         {Object.keys(folders).map(f => <option key={f} value={f}>{f}</option>)}
                       </select>
-                      {selectedFolder === 'new' && <input value={newFolderName} onChange={e => setNewFolderName(e.target.value)} placeholder="اسم المجلد" className="w-full bg-black/60 border border-white/10 p-4 rounded-2xl" />}
+                      {selectedFolder === 'new' && <input value={newFolderName} onChange={e => setNewFolderName(e.target.value)} placeholder="اسم المجلد الجديد" className="w-full bg-black/60 border border-white/10 p-4 rounded-2xl" />}
                       <input value={newSongTitle} onChange={e => setNewSongTitle(e.target.value)} placeholder="اسم الأغنية" className="w-full bg-black/60 border border-white/10 p-4 rounded-2xl" />
                       <input value={newSongUrl} onChange={e => setNewSongUrl(e.target.value)} placeholder="رابط MP3" className="w-full bg-black/60 border border-white/10 p-4 rounded-2xl font-mono" />
                       <input value={newSongImg} onChange={e => setNewSongImg(e.target.value)} placeholder="رابط الصورة" className="w-full bg-black/60 border border-white/10 p-4 rounded-2xl font-mono" />
@@ -709,37 +823,55 @@ const App: React.FC = () => {
                     ))}
                   </div>
                 )}
-                {/* Settings */}
+
+                {/* Settings Tab */}
                 {adminTab === 'settings' && (
                   <div className="space-y-6">
-                      <div className="space-y-2"><label className="text-cyan-400 font-bold">رسالة الترحيب</label><input value={settings.welcome} onChange={e => setSettings({...settings, welcome: e.target.value})} className="w-full bg-black/60 border border-white/10 p-4 rounded-2xl" /></div>
-                      <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl"><span>عداد الزيارات</span><input type="checkbox" checked={settings.showVisitorCount} onChange={e => setSettings({...settings, showVisitorCount: e.target.checked})} className="accent-cyan-500 w-6 h-6" /></div>
+                      <div className="space-y-2">
+                        <label className="text-cyan-400 font-bold">رسالة الترحيب</label>
+                        <input value={settings.welcome} onChange={e => setSettings({...settings, welcome: e.target.value})} className="w-full bg-black/60 border border-white/10 p-4 rounded-2xl" />
+                      </div>
+                      <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl">
+                        <span>عداد الزيارات</span>
+                        <input type="checkbox" checked={settings.showVisitorCount} onChange={e => setSettings({...settings, showVisitorCount: e.target.checked})} className="accent-cyan-500 w-6 h-6" />
+                      </div>
                       <div className="bg-purple-900/20 p-6 rounded-[2rem] space-y-4">
                         <div className="flex justify-between"><span>وضع Hero</span><input type="checkbox" checked={settings.heroMode} onChange={e => setSettings({...settings, heroMode: e.target.checked})} className="accent-purple-500 w-6 h-6" /></div>
                         <input value={settings.heroImg} onChange={e => setSettings({...settings, heroImg: e.target.value})} placeholder="رابط الخلفية" className="w-full bg-black/60 border border-white/10 p-3 rounded-xl" />
                       </div>
-                      <button onClick={() => update(ref(db, 'settings'), settings)} className="w-full py-4 bg-gradient-to-r from-cyan-600 to-purple-600 rounded-2xl font-black">حفظ</button>
+                      <button onClick={() => update(ref(db, 'settings'), settings)} className="w-full py-4 bg-gradient-to-r from-cyan-600 to-purple-600 rounded-2xl font-black">حفظ التغييرات</button>
                   </div>
                 )}
-                {/* Pages */}
+                
+                {/* Pages Tab (With Ordering) */}
                 {adminTab === 'pages' && (
                   <div className="space-y-6">
                     <div className="bg-white/5 p-8 rounded-[3rem] space-y-4 border border-white/10">
-                      <div className="flex gap-4"><input id="pg-id" placeholder="ID" className="flex-1 bg-black/60 border border-white/10 p-4 rounded-2xl font-bold" /><input id="pg-order" type="number" placeholder="#" className="w-24 bg-black/60 border border-white/10 p-4 rounded-2xl font-bold text-center" /></div>
-                      <input id="pg-title" placeholder="العنوان" className="w-full bg-black/60 border border-white/10 p-4 rounded-2xl font-bold" />
-                      <textarea id="pg-content" rows={8} placeholder="HTML..." className="w-full bg-black/60 border border-white/10 p-4 rounded-2xl font-mono" />
-                      <button onClick={() => {
+                      <div className="flex gap-4">
+                         <input id="pg-id" placeholder="ID (eng)" className="flex-1 bg-black/60 border border-white/10 p-4 rounded-2xl font-bold" />
+                         <input id="pg-order" type="number" placeholder="ترتيب (1,2..)" className="w-24 bg-black/60 border border-white/10 p-4 rounded-2xl font-bold text-center" />
+                      </div>
+                      <input id="pg-title" placeholder="العنوان (عربي)" className="w-full bg-black/60 border border-white/10 p-4 rounded-2xl font-bold" />
+                      <textarea id="pg-content" rows={8} placeholder="HTML Content..." className="w-full bg-black/60 border border-white/10 p-4 rounded-2xl font-mono" />
+                      <button 
+                        onClick={() => {
                           const id = (document.getElementById('pg-id') as HTMLInputElement).value;
                           const title = (document.getElementById('pg-title') as HTMLInputElement).value;
                           const content = (document.getElementById('pg-content') as HTMLTextAreaElement).value;
                           const order = (document.getElementById('pg-order') as HTMLInputElement).value;
-                          if(id && title) set(ref(db, `custom_pages/${id}`), { title, content, order: parseInt(order) || 999 }).then(() => alert("تم!"));
-                        }} className="w-full py-4 bg-purple-600 rounded-2xl font-black">نشر</button>
+                          if(id && title) {
+                            set(ref(db, `custom_pages/${id}`), { title, content, order: parseInt(order) || 999 }).then(() => alert("تم النشر!"));
+                          }
+                        }}
+                        className="w-full py-4 bg-purple-600 rounded-2xl font-black"
+                      >
+                        نشر الصفحة
+                      </button>
                     </div>
                     <div className="space-y-2">
                        {customPages.map(pg => (
                          <div key={pg.id} className="flex justify-between items-center bg-white/5 p-4 rounded-xl">
-                            <div><span className="text-cyan-400 font-bold ml-2">#{pg.order}</span> {pg.title}</div>
+                            <div><span className="text-cyan-400 font-bold ml-2">#{pg.order || '-'}</span> {pg.title}</div>
                             <button onClick={() => remove(ref(db, `custom_pages/${pg.id}`))} className="text-red-500"><Trash2 size={18} /></button>
                          </div>
                        ))}
@@ -751,6 +883,8 @@ const App: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Audio Element */}
       <audio ref={audioRef} onTimeUpdate={onTimeUpdate} onEnded={nextSong} />
     </div>
   );
@@ -779,7 +913,9 @@ const AdminNavBtn: React.FC<{ active: boolean; onClick: () => void; icon: React.
 );
 
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(err => console.log('PWA Failed', err)); });
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(err => console.log('PWA Failed', err));
+  });
 }
 
 export default App;
