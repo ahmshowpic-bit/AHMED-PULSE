@@ -16,22 +16,20 @@ import {
   Send, 
   ChevronRight, 
   MoreHorizontal,
-  Disc,
   FolderOpen,
   Fingerprint,
   CheckCircle,
   Trash2,
-  Plus,
   ArrowLeft,
   Sparkles,
   Zap,
-  Menu,
-  X,
-  Download // تم إضافة أيقونة التثبيت
+  Download,
+  ChevronDown, // أيقونة إغلاق المشغل الموسع
+  Maximize2 // أيقونة التوسيع
 } from 'lucide-react';
 import { 
   db, auth, googleProvider, ADMIN_EMAIL, 
-  ref, onValue, push, set, update, remove, runTransaction, 
+  ref, onValue, push, update, remove, runTransaction, 
   signInWithPopup, signOut, onAuthStateChanged, User 
 } from './firebase';
 import { Song, DiaryPost, ContactMessage, CustomPage, AppSettings, TabId } from './types';
@@ -61,8 +59,10 @@ const App: React.FC = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [adminTab, setAdminTab] = useState('inbox');
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null); // حالة لحفظ حدث التثبيت
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  
+  // New State for Expanded Player
+  const [isPlayerExpanded, setIsPlayerExpanded] = useState(false);
   
   // Data State
   const [settings, setSettings] = useState<AppSettings>({
@@ -112,48 +112,39 @@ const App: React.FC = () => {
   // Install Prompt Listener
   useEffect(() => {
     window.addEventListener('beforeinstallprompt', (e) => {
-      // Prevent the mini-infobar from appearing on mobile
       e.preventDefault();
-      // Stash the event so it can be triggered later.
       setDeferredPrompt(e);
     });
   }, []);
 
   const handleInstallClick = async () => {
     if (!deferredPrompt) return;
-    // Show the install prompt
     deferredPrompt.prompt();
-    // Wait for the user to respond to the prompt
     const { outcome } = await deferredPrompt.userChoice;
     if (outcome === 'accepted') {
-      console.log('User accepted the install prompt');
       setDeferredPrompt(null);
     }
   };
 
   // Firebase Listeners
   useEffect(() => {
-    // Auth
     const unsubAuth = onAuthStateChanged(auth, (u) => {
       setUser(u);
       setIsAdmin(u?.email === ADMIN_EMAIL);
     });
 
-    // Settings
     const unsubSettings = onValue(ref(db, 'settings'), (snap) => {
       if (snap.exists()) setSettings(prev => ({ ...prev, ...snap.val() }));
     }, (error) => console.warn("Settings access restricted:", error.message));
 
-    // Visitor Counter Transaction
     if (!sessionStorage.getItem('visited')) {
       const vRef = ref(db, 'settings/visitorCount');
       runTransaction(vRef, (current) => (current || 0) + 1).catch(err => {
-        console.warn("Visitor count update failed. Check Firebase Rules.");
+        console.warn("Visitor count update failed.");
       });
       sessionStorage.setItem('visited', 'true');
     }
 
-    // Music
     const unsubMusic = onValue(ref(db, 'music'), (snap) => {
       const data: Song[] = [];
       snap.forEach((child) => {
@@ -162,16 +153,14 @@ const App: React.FC = () => {
       setSongs(data);
     }, (error) => console.warn("Music access restricted:", error.message));
 
-    // Community
     const unsubDiaries = onValue(ref(db, 'diaries'), (snap) => {
       const data: DiaryPost[] = [];
       snap.forEach((child) => {
         data.push({ id: child.key!, ...child.val() });
       });
-      setDiaries(data.reverse()); // Latest first
+      setDiaries(data.reverse());
     }, (error) => console.warn("Diaries access restricted:", error.message));
 
-    // Custom Pages
     const unsubPages = onValue(ref(db, 'custom_pages'), (snap) => {
       const data: CustomPage[] = [];
       snap.forEach((child) => {
@@ -180,14 +169,13 @@ const App: React.FC = () => {
       setCustomPages(data);
     }, (error) => console.warn("Pages access restricted:", error.message));
 
-    // Inbox
     const unsubInbox = onValue(ref(db, 'inbox'), (snap) => {
       const data: ContactMessage[] = [];
       snap.forEach((child) => {
         data.push({ id: child.key!, ...child.val() });
       });
       setMessages(data);
-    }, (error) => console.warn("Inbox access restricted (Admin only):", error.message));
+    }, (error) => console.warn("Inbox access restricted:", error.message));
 
     return () => {
       unsubAuth();
@@ -215,7 +203,8 @@ const App: React.FC = () => {
     }
   }, [volume]);
 
-  const togglePlay = () => {
+  const togglePlay = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation(); // Prevent opening expand player
     if (!audioRef.current) return;
     if (isPlaying) {
       audioRef.current.pause();
@@ -237,14 +226,16 @@ const App: React.FC = () => {
     audioRef.current.play().then(() => setIsPlaying(true)).catch(console.error);
   };
 
-  const nextSong = () => {
+  const nextSong = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     if (!currentSong || playlist.length === 0) return;
     const currentIndex = playlist.findIndex(s => s.id === currentSong.id);
     const nextIndex = (currentIndex + 1) % playlist.length;
     playSong(playlist[nextIndex], playlist);
   };
 
-  const prevSong = () => {
+  const prevSong = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     if (!currentSong || playlist.length === 0) return;
     const currentIndex = playlist.findIndex(s => s.id === currentSong.id);
     const prevIndex = (currentIndex - 1 + playlist.length) % playlist.length;
@@ -260,6 +251,7 @@ const App: React.FC = () => {
   };
 
   const onSeek = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.stopPropagation();
     if (!audioRef.current || !audioRef.current.duration) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -325,7 +317,7 @@ const App: React.FC = () => {
       setContactName('');
       alert("تم الإرسال بنجاح!");
     }).catch(err => {
-      alert("حدث خطأ أثناء الإرسال. تأكد من إعدادات Firebase.");
+      alert("حدث خطأ أثناء الإرسال.");
     });
   };
 
@@ -366,6 +358,21 @@ const App: React.FC = () => {
 
   return (
     <div className="relative h-screen w-full flex overflow-hidden">
+        {/* Style for dynamic animations */}
+      <style>
+        {`
+          @keyframes gradient-xy {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+          }
+          .animate-gradient-slow {
+            background-size: 200% 200%;
+            animation: gradient-xy 6s ease infinite;
+          }
+        `}
+      </style>
+
       {/* Dynamic Background */}
       <div 
         className={`absolute inset-0 z-0 transition-all duration-1000 bg-center bg-no-repeat ${settings.animType === 'zoom-in' ? 'anim-zoom-in' : ''}`}
@@ -383,18 +390,20 @@ const App: React.FC = () => {
       )}
       <div className="absolute inset-0 z-[1] bg-gradient-to-t from-black via-transparent to-black/30 pointer-events-none" />
 
-      {/* --- NEW: Mobile Header --- */}
+      {/* --- Mobile Header --- */}
       <header className="md:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-3 bg-black/30 backdrop-blur-md border-b border-white/5">
-         <div className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-cyan-400 tracking-tighter">
+         <div 
+            onClick={() => setActiveTab('home')}
+            className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-cyan-400 tracking-tighter cursor-pointer active:scale-95 transition-transform"
+         >
             AHMED PULSE
          </div>
          <div className="flex items-center gap-3">
-            {/* زر التثبيت الذكي - يظهر فقط إذا كان متاحاً */}
+            {/* Download Button */}
             {deferredPrompt && (
               <button 
                 onClick={handleInstallClick}
                 className="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-r from-purple-500 to-cyan-500 text-white shadow-lg animate-pulse"
-                title="تثبيت التطبيق"
               >
                 <Download size={16} />
               </button>
@@ -405,16 +414,18 @@ const App: React.FC = () => {
                     <Shield size={20} />
                 </button>
             )}
-            <div className="w-8 h-8 rounded-full bg-cyan-500/10 flex items-center justify-center border border-cyan-500/20">
+            
+            {/* Removed the pulsing dot as requested */}
+            {/* <div className="w-8 h-8 rounded-full bg-cyan-500/10 flex items-center justify-center border border-cyan-500/20">
                <div className="w-2 h-2 bg-cyan-400 rounded-full animate-ping" />
-            </div>
+            </div> */}
          </div>
       </header>
 
       {/* Sidebar - Desktop */}
       <aside className="hidden md:flex w-64 glass border-l border-white/10 z-50 flex-col p-8 transition-all">
-        <div className="mb-10">
-          <h1 className="text-3xl font-black bg-gradient-to-br from-white to-cyan-400 bg-clip-text text-transparent tracking-tighter">
+        <div className="mb-10 cursor-pointer" onClick={() => setActiveTab('home')}>
+          <h1 className="text-3xl font-black bg-gradient-to-br from-white to-cyan-400 bg-clip-text text-transparent tracking-tighter hover:opacity-80 transition-opacity">
             AHMED PULSE
           </h1>
         </div>
@@ -456,15 +467,13 @@ const App: React.FC = () => {
           
           {/* Home Section */}
           <section className={`${activeTab === 'home' ? 'block' : 'hidden'} animate-fade-in`}>
-            {/* Hero Section: Text + Optional Song */}
+            {/* Hero Section */}
             <div className="min-h-[40vh] flex flex-col items-center justify-center text-center mt-8 md:mt-12 mb-20">
               
-              {/* 1. Welcome Text (Always Visible) */}
               <h2 className="text-5xl md:text-8xl font-black text-white mb-8 drop-shadow-2xl leading-tight px-4 arabic-text-container">
                 {settings.welcome}
               </h2>
 
-              {/* 2. Hero Song (Visible ONLY if selected) */}
               {heroSong && (
                 <div className="animate-fade-in flex flex-col items-center gap-6 mb-8">
                   <div className="relative group cursor-pointer" onClick={() => playSong(heroSong, [heroSong])}>
@@ -497,14 +506,6 @@ const App: React.FC = () => {
                     >
                       <Play size={20} fill="black" /> استمع الآن
                     </button>
-                    {isAdmin && (
-                        <button 
-                        onClick={() => update(ref(db, 'settings'), { defaultSongId: null })}
-                        className="bg-white/10 text-white px-8 py-3 rounded-full font-bold hover:bg-white/20 transition-all border border-white/10"
-                        >
-                        إلغاء التثبيت
-                        </button>
-                    )}
                   </div>
                 </div>
               )}
@@ -546,7 +547,6 @@ const App: React.FC = () => {
                     </div>
                   </div>
                 ))}
-                {featuredSongs.length === 0 && <div className="text-white/20 p-8">لا توجد صوتيات مختارة حالياً</div>}
               </div>
             </div>
 
@@ -579,7 +579,6 @@ const App: React.FC = () => {
                     <p className="text-sm text-white/70 line-clamp-3 leading-relaxed">{post.text}</p>
                   </div>
                 ))}
-                {latestDiaries.length === 0 && <div className="col-span-full text-white/20 py-10 text-center">كن أول من يشاركنا في المجتمع!</div>}
               </div>
             </div>
           </section>
@@ -602,7 +601,7 @@ const App: React.FC = () => {
                 </button>
                 <h3 className="text-3xl font-black text-cyan-400 mb-8 border-r-4 border-cyan-400 pr-4">{currentFolder}</h3>
                 <div className="grid gap-3">
-                  {folders[currentFolder]?.map((song, i) => (
+                  {folders[currentFolder]?.map((song) => (
                     <div 
                       key={song.id}
                       onClick={() => playSong(song, folders[currentFolder])}
@@ -665,7 +664,7 @@ const App: React.FC = () => {
                   />
                   <div className="flex items-center gap-3 px-4 py-2 rounded-2xl bg-white/5 border border-white/5">
                     <Sparkles size={20} className="text-yellow-400" />
-                    <span className="text-xs text-white/40">شاركنا لحظاتك المميزة، أفكارك، أو حتى اقتراحاتك الموسيقية.</span>
+                    <span className="text-xs text-white/40">شاركنا لحظاتك المميزة.</span>
                   </div>
                 </div>
                 <textarea 
@@ -763,7 +762,7 @@ const App: React.FC = () => {
                 </button>
               </div>
               
-              {/* Hidden Admin Trigger */}
+              {/* Hidden Admin Trigger (PRESERVED) */}
               <div className="mt-16 opacity-5 hover:opacity-100 transition-opacity">
                 <button onClick={() => isAdmin ? setShowAdminModal(true) : handleLogin()}>
                   <Fingerprint size={32} className="mx-auto text-white cursor-pointer" />
@@ -785,12 +784,18 @@ const App: React.FC = () => {
         </div>
       </main>
 
-      {/* Music Player Bar */}
-      <div className={`fixed bottom-24 md:bottom-8 left-4 right-4 md:right-8 md:left-[272px] h-24 glass rounded-full z-[100] border border-white/10 flex items-center justify-between px-6 md:px-10 shadow-2xl transition-all duration-500 ${isPlaying ? 'playing border-cyan-500/30 ring-4 ring-cyan-500/5 bg-black/90' : ''}`}>
-        {/* Progress Bar (Absolute Positioned for Thread Look) */}
+      {/* --- Mini Music Player Bar (Animated Gradient & Expandable) --- */}
+      <div 
+        onClick={() => setIsPlayerExpanded(true)}
+        className={`fixed bottom-24 md:bottom-8 left-4 right-4 md:right-8 md:left-[272px] h-24 rounded-full z-[100] border border-white/10 flex items-center justify-between px-6 md:px-10 shadow-2xl transition-all duration-500 cursor-pointer overflow-hidden
+          ${isPlaying ? 'ring-4 ring-cyan-500/5 shadow-cyan-500/20' : ''}
+          bg-gradient-to-r from-gray-900 via-black to-gray-900 animate-gradient-slow
+        `}
+      >
+        {/* Progress Bar (Click stops propagation to prevent expand if clicking bar directly, though container expands mostly) */}
         <div 
-          className="absolute top-0 left-10 right-10 h-1 cursor-pointer group"
-          onClick={onSeek}
+          className="absolute top-0 left-10 right-10 h-1 cursor-pointer group z-20"
+          onClick={(e) => onSeek(e)}
         >
           <div className="w-full h-full bg-white/10 rounded-full overflow-hidden relative">
             <div 
@@ -801,43 +806,98 @@ const App: React.FC = () => {
         </div>
 
         {/* Player Left: Info */}
-        <div className="flex items-center gap-4 flex-1">
+        <div className="flex items-center gap-4 flex-1 z-10">
           <div 
             className={`w-14 h-14 rounded-2xl bg-cover bg-center border border-white/10 shadow-2xl transition-all duration-700 ${isPlaying ? 'rotate-12 scale-110 shadow-cyan-500/20' : ''}`}
             style={{ backgroundImage: `url(${currentSong?.image || "https://picsum.photos/200/200"})` }}
           />
           <div className="overflow-hidden">
-            <div className="font-black text-sm md:text-lg truncate max-w-[120px] md:max-w-[200px]">{currentSong?.name || "اختر أغنية"}</div>
+            <div className="font-black text-sm md:text-lg truncate max-w-[100px] md:max-w-[200px]">{currentSong?.name || "اختر أغنية"}</div>
             <div className="text-[10px] uppercase font-bold text-cyan-400 tracking-tighter opacity-60">{currentSong?.folder || "READY"}</div>
           </div>
         </div>
 
-        {/* Player Center: Controls */}
-        <div className="flex flex-col items-center gap-1">
+        {/* Player Center: Controls (Stop Propagation) */}
+        <div className="flex flex-col items-center gap-1 z-10" onClick={(e) => e.stopPropagation()}>
           <div className="flex items-center gap-4 md:gap-8">
-            <button onClick={prevSong} className="text-white/40 hover:text-white transition-all transform active:scale-90"><SkipBack size={28} /></button>
+            <button onClick={(e) => prevSong(e)} className="text-white/40 hover:text-white transition-all transform active:scale-90"><SkipBack size={28} /></button>
             <button 
-              onClick={togglePlay}
+              onClick={(e) => togglePlay(e)}
               className="w-14 h-14 rounded-full bg-white text-black flex items-center justify-center shadow-2xl shadow-white/10 hover:scale-110 active:scale-90 transition-all"
             >
               {isPlaying ? <Pause size={28} fill="currentColor" /> : <Play size={28} fill="currentColor" className="ml-1" />}
             </button>
-            <button onClick={nextSong} className="text-white/40 hover:text-white transition-all transform active:scale-90"><SkipForward size={28} /></button>
+            <button onClick={(e) => nextSong(e)} className="text-white/40 hover:text-white transition-all transform active:scale-90"><SkipForward size={28} /></button>
           </div>
         </div>
 
-        {/* Player Right: Volume (Desktop Only) */}
-        <div className="hidden md:flex items-center gap-3 flex-1 justify-end">
-          <Volume2 size={20} className="text-cyan-400" />
-          <input 
-            type="range" 
-            min="0" 
-            max="1" 
-            step="0.01" 
-            value={volume} 
-            onChange={e => setVolume(parseFloat(e.target.value))}
-            className="w-32 h-1 accent-cyan-400 bg-white/10 rounded-full cursor-pointer"
+        {/* Player Right: Volume / Expand Icon */}
+        <div className="flex items-center gap-3 flex-1 justify-end z-10">
+          <div className="hidden md:flex items-center gap-3" onClick={e => e.stopPropagation()}>
+             <Volume2 size={20} className="text-cyan-400" />
+             <input 
+                type="range" 
+                min="0" 
+                max="1" 
+                step="0.01" 
+                value={volume} 
+                onChange={e => setVolume(parseFloat(e.target.value))}
+                className="w-32 h-1 accent-cyan-400 bg-white/10 rounded-full cursor-pointer"
+             />
+          </div>
+          <button className="md:hidden text-white/50 animate-pulse">
+             <Maximize2 size={20} />
+          </button>
+        </div>
+      </div>
+
+      {/* --- Full Screen Expanded Player --- */}
+      <div 
+        className={`fixed inset-0 z-[200] bg-black/80 backdrop-blur-3xl flex flex-col transition-transform duration-500 ease-in-out ${isPlayerExpanded ? 'translate-y-0' : 'translate-y-full'}`}
+      >
+        {/* Header of Expanded Player */}
+        <div className="p-6 flex justify-between items-center">
+          <button 
+            onClick={() => setIsPlayerExpanded(false)} 
+            className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-all"
+          >
+            <ChevronDown size={32} />
+          </button>
+          <div className="text-xs font-black tracking-[0.2em] text-cyan-400 uppercase">Now Playing</div>
+          <button className="w-12 h-12" /> {/* Spacer */}
+        </div>
+
+        {/* Main Content */}
+        <div className="flex-1 flex flex-col items-center justify-center px-8 text-center pb-20">
+          <div 
+             className={`w-64 h-64 md:w-96 md:h-96 rounded-[3rem] bg-cover bg-center shadow-[0_20px_50px_rgba(0,0,0,0.5)] mb-10 border-4 border-white/5 transition-transform duration-700 ${isPlaying ? 'scale-100 shadow-cyan-500/30' : 'scale-95'}`}
+             style={{ backgroundImage: `url(${currentSong?.image || "https://picsum.photos/400/400"})` }}
           />
+          
+          <h2 className="text-3xl md:text-5xl font-black text-white mb-2 tracking-tight">{currentSong?.name || "اختر أغنية للبدء"}</h2>
+          <p className="text-xl text-cyan-400 font-bold opacity-80 mb-12">{currentSong?.folder || "AHMED PULSE Music"}</p>
+
+          {/* Progress */}
+          <div className="w-full max-w-2xl mb-12 group" onClick={onSeek}>
+            <div className="h-2 bg-white/10 rounded-full overflow-hidden relative cursor-pointer">
+              <div 
+                className="absolute top-0 right-0 h-full bg-gradient-to-l from-cyan-400 to-purple-500 transition-all"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Controls */}
+          <div className="flex items-center gap-12">
+             <button onClick={(e) => prevSong(e)} className="text-white/40 hover:text-white transition-all transform active:scale-90"><SkipBack size={48} /></button>
+             <button 
+               onClick={(e) => togglePlay(e)}
+               className="w-24 h-24 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600 text-white flex items-center justify-center shadow-2xl shadow-cyan-500/40 hover:scale-110 active:scale-95 transition-all"
+             >
+               {isPlaying ? <Pause size={40} fill="currentColor" /> : <Play size={40} fill="currentColor" className="ml-2" />}
+             </button>
+             <button onClick={(e) => nextSong(e)} className="text-white/40 hover:text-white transition-all transform active:scale-90"><SkipForward size={48} /></button>
+          </div>
         </div>
       </div>
 
