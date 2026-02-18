@@ -15,7 +15,7 @@ import {
   Heart, 
   Send, 
   ChevronRight, 
-  ChevronDown, // أيقونة إغلاق المشغل
+  ChevronDown, // زر إغلاق المشغل
   MoreHorizontal,
   Disc,
   FolderOpen,
@@ -26,10 +26,10 @@ import {
   ArrowLeft,
   Sparkles,
   Zap,
-  Menu, // أيقونة القائمة
-  Grid, // أيقونة المزيد
+  Menu,
   X,
   Download,
+  Grid, // أيقونة القائمة الإضافية
   ListOrdered // أيقونة الترتيب
 } from 'lucide-react';
 import { 
@@ -64,8 +64,7 @@ const App: React.FC = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [adminTab, setAdminTab] = useState('inbox');
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); // حالة القائمة الجانبية للموبايل
-  const [isExtrasOpen, setIsExtrasOpen] = useState(false); // حالة قائمة الصفحات الإضافية السفلية
+  const [isExtrasOpen, setIsExtrasOpen] = useState(false); // القائمة السفلية الإضافية
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   
   // Data State
@@ -164,13 +163,13 @@ const App: React.FC = () => {
       setDiaries(data.reverse());
     });
 
-    // Custom Pages with Sorting Logic
+    // Custom Pages (With Sorting)
     const unsubPages = onValue(ref(db, 'custom_pages'), (snap) => {
       const data: CustomPage[] = [];
       snap.forEach((child) => {
         data.push({ id: child.key!, ...child.val() });
       });
-      // Sort pages by 'order' property (ascending)
+      // ترتيب الصفحات بناءً على حقل order
       data.sort((a: any, b: any) => (parseInt(a.order) || 999) - (parseInt(b.order) || 999));
       setCustomPages(data);
     });
@@ -224,12 +223,7 @@ const App: React.FC = () => {
     setCurrentSong(song);
     setPlaylist(list);
     audioRef.current.src = song.url;
-    audioRef.current.play().then(() => {
-      setIsPlaying(true);
-      if (!isPlayerExpanded && window.innerWidth < 768) {
-        // Optional: Auto expand on mobile play? Let's keep it manual for better UX
-      }
-    }).catch(console.error);
+    audioRef.current.play().then(() => setIsPlaying(true)).catch(console.error);
   };
 
   const nextSong = (e?: React.MouseEvent) => {
@@ -346,6 +340,14 @@ const App: React.FC = () => {
     };
   }, [settings, currentSong, heroSong]);
 
+  // وظيفة العودة للرئيسية وإغلاق كل شيء
+  const goHome = () => {
+    setActiveTab('home');
+    setIsPlayerExpanded(false);
+    setIsExtrasOpen(false);
+    setIsMobileMenuOpen(false);
+  };
+
   return (
     <div className="relative h-screen w-full flex overflow-hidden">
       {/* Dynamic Background */}
@@ -361,7 +363,7 @@ const App: React.FC = () => {
       {/* --- Mobile Header --- */}
       <header className="md:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-3 bg-black/30 backdrop-blur-md border-b border-white/5 transition-transform duration-300">
          <div 
-            onClick={() => setActiveTab('home')}
+            onClick={goHome}
             className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-cyan-400 tracking-tighter cursor-pointer"
          >
             AHMED PULSE
@@ -385,7 +387,7 @@ const App: React.FC = () => {
 
       {/* Sidebar - Desktop */}
       <aside className="hidden md:flex w-64 glass border-l border-white/10 z-50 flex-col p-8 transition-all">
-        <div className="mb-10 cursor-pointer" onClick={() => setActiveTab('home')}>
+        <div className="mb-10 cursor-pointer" onClick={goHome}>
           <h1 className="text-3xl font-black bg-gradient-to-br from-white to-cyan-400 bg-clip-text text-transparent tracking-tighter">
             AHMED PULSE
           </h1>
@@ -396,7 +398,7 @@ const App: React.FC = () => {
         </div>
 
         <nav className="flex-1 space-y-2 overflow-y-auto no-scrollbar">
-          <SidebarBtn active={activeTab === 'home'} onClick={() => setActiveTab('home')} icon={<Home />} label="الرئيسية" />
+          <SidebarBtn active={activeTab === 'home'} onClick={goHome} icon={<Home />} label="الرئيسية" />
           <SidebarBtn active={activeTab === 'music'} onClick={() => setActiveTab('music')} icon={<MusicIcon />} label="الصوتيات" />
           <SidebarBtn active={activeTab === 'diaries'} onClick={() => setActiveTab('diaries')} icon={<Users />} label="المجتمع" />
           <SidebarBtn active={activeTab === 'contact'} onClick={() => setActiveTab('contact')} icon={<Mail />} label="تواصل معي" />
@@ -428,7 +430,8 @@ const App: React.FC = () => {
           {/* Home Section */}
           <section className={`${activeTab === 'home' ? 'block' : 'hidden'} animate-fade-in`}>
             <div className="min-h-[40vh] flex flex-col items-center justify-center text-center mt-8 md:mt-12 mb-20">
-              <h2 className="text-5xl md:text-8xl font-black text-white mb-8 drop-shadow-2xl leading-tight px-4 arabic-text-container">
+              {/* تصحيح النص لعدم الخروج عن الشاشة */}
+              <h2 className="text-4xl md:text-8xl font-black text-white mb-8 drop-shadow-2xl leading-tight px-4 arabic-text-container break-words max-w-full">
                 {settings.welcome}
               </h2>
               {heroSong && (
@@ -446,11 +449,11 @@ const App: React.FC = () => {
                        </div>
                     </div>
                   </div>
-                  <div>
-                    <h2 className="text-3xl md:text-5xl font-black text-white mb-2 drop-shadow-2xl tracking-tighter">
+                  <div className="max-w-full px-4">
+                    <h2 className="text-2xl md:text-5xl font-black text-white mb-2 drop-shadow-2xl tracking-tighter truncate">
                       {heroSong.name}
                     </h2>
-                    <p className="text-cyan-400 text-lg md:text-xl font-bold uppercase tracking-widest bg-cyan-500/10 px-4 py-1 rounded-full inline-block mt-2 border border-cyan-500/20">
+                    <p className="text-cyan-400 text-sm md:text-xl font-bold uppercase tracking-widest bg-cyan-500/10 px-4 py-1 rounded-full inline-block mt-2 border border-cyan-500/20">
                       {heroSong.folder} | Featured Track
                     </p>
                   </div>
@@ -609,6 +612,13 @@ const App: React.FC = () => {
                 <textarea value={contactMsg} onChange={e => setContactMsg(e.target.value)} placeholder="بماذا تود أن تخبرني؟" rows={6} className="w-full bg-black/60 border border-white/10 p-6 rounded-[2.5rem] text-white resize-none text-center text-lg" />
                 <button onClick={sendMessage} className="w-full py-6 bg-gradient-to-r from-cyan-500 via-blue-600 to-purple-600 rounded-full font-black text-xl shadow-2xl shadow-cyan-500/30">إرسال الرسالة الآن</button>
               </div>
+
+              {/* استعادة زر البصمة الخفي (Admin Trigger) */}
+              <div className="mt-16 opacity-5 hover:opacity-100 transition-opacity">
+                <button onClick={() => isAdmin ? setShowAdminModal(true) : handleLogin()}>
+                  <Fingerprint size={32} className="mx-auto text-white cursor-pointer" />
+                </button>
+              </div>
             </div>
           </section>
 
@@ -633,20 +643,20 @@ const App: React.FC = () => {
           ${isPlaying && !isPlayerExpanded ? 'playing ring-2 ring-cyan-500/20' : ''}
         `}
       >
-        {/* Full Screen Close Button */}
+        {/* زر إغلاق المشغل الكبير */}
         {isPlayerExpanded && (
           <button 
             onClick={(e) => { e.stopPropagation(); setIsPlayerExpanded(false); }}
-            className="absolute top-8 right-8 text-white/40 hover:text-white p-4 rounded-full bg-white/5 hover:bg-white/10 transition-all"
+            className="absolute top-8 right-8 text-white/40 hover:text-white p-4 rounded-full bg-white/5 hover:bg-white/10 transition-all z-50"
           >
             <ChevronDown size={32} />
           </button>
         )}
 
-        {/* Player UI Container */}
+        {/* حاوية المشغل */}
         <div className={`flex w-full ${isPlayerExpanded ? 'flex-col items-center gap-12 max-w-md' : 'flex-row items-center gap-4'}`}>
           
-          {/* Progress Bar - Only visible in Small Mode as overlay, Big Mode has own slider */}
+          {/* شريط التقدم الصغير (يظهر فقط في الوضع المصغر) */}
           {!isPlayerExpanded && (
             <div className="absolute top-0 left-10 right-10 h-1 cursor-pointer group" onClick={onSeek}>
               <div className="w-full h-full bg-white/10 rounded-full overflow-hidden relative">
@@ -655,35 +665,34 @@ const App: React.FC = () => {
             </div>
           )}
 
-          {/* Artwork */}
+          {/* صورة الأغنية */}
           <div className="relative">
-             {/* Pulse Rings in Full Mode */}
+             {/* تأثير النبض بدون دوران */}
              {isPlayerExpanded && isPlaying && (
                <>
-                 <div className="absolute inset-0 rounded-full border-2 border-cyan-500/30 animate-ping opacity-20" style={{ animationDuration: '2s' }}></div>
-                 <div className="absolute inset-0 rounded-full border border-cyan-500/50 animate-pulse opacity-40"></div>
+                 <div className="absolute inset-0 rounded-2xl border-2 border-cyan-500/30 animate-ping opacity-20" style={{ animationDuration: '2s' }}></div>
                  <div className="absolute -inset-10 bg-cyan-500/20 blur-3xl rounded-full opacity-30 animate-pulse"></div>
                </>
              )}
              <div 
                 className={`bg-cover bg-center border border-white/10 shadow-2xl transition-all duration-700
                   ${isPlayerExpanded 
-                    ? 'w-64 h-64 md:w-80 md:h-80 rounded-full shadow-[0_0_50px_rgba(6,182,212,0.3)] animate-[spin_20s_linear_infinite]' 
-                    : `w-14 h-14 rounded-2xl ${isPlaying ? 'rotate-12 scale-110' : ''}`
+                    ? 'w-64 h-64 md:w-80 md:h-80 rounded-[2rem] shadow-[0_0_50px_rgba(6,182,212,0.3)]' // إزالة الدوران
+                    : `w-14 h-14 rounded-2xl ${isPlaying ? 'rotate-3 scale-110' : ''}` // حركة بسيطة جدا في المصغر
                   }
-                  ${!isPlaying && isPlayerExpanded ? 'animation-pause' : ''}
+                  ${isPlaying && isPlayerExpanded ? 'scale-105' : ''} // نبض خفيف عند التشغيل
                 `}
-                style={{ backgroundImage: `url(${currentSong?.image || "https://picsum.photos/200/200"})`, animationPlayState: isPlaying ? 'running' : 'paused' }}
+                style={{ backgroundImage: `url(${currentSong?.image || "https://picsum.photos/200/200"})` }}
              />
           </div>
 
-          {/* Info */}
+          {/* معلومات الأغنية */}
           <div className={`overflow-hidden text-center ${!isPlayerExpanded ? 'text-right flex-1' : ''}`}>
             <div className={`font-black truncate text-white ${isPlayerExpanded ? 'text-3xl mb-2' : 'text-sm md:text-lg max-w-[150px]'}`}>{currentSong?.name || "اختر أغنية"}</div>
             <div className={`font-bold text-cyan-400 uppercase tracking-widest ${isPlayerExpanded ? 'text-lg' : 'text-[10px] opacity-60'}`}>{currentSong?.folder || "READY"}</div>
           </div>
 
-          {/* Controls */}
+          {/* أزرار التحكم */}
           <div className={`flex items-center ${isPlayerExpanded ? 'gap-12' : 'gap-4 md:gap-8'}`}>
             <button onClick={prevSong} className={`text-white/40 hover:text-white transition-all transform active:scale-90 ${isPlayerExpanded ? 'scale-150' : ''}`}><SkipBack size={28} /></button>
             <button 
@@ -695,7 +704,7 @@ const App: React.FC = () => {
             <button onClick={nextSong} className={`text-white/40 hover:text-white transition-all transform active:scale-90 ${isPlayerExpanded ? 'scale-150' : ''}`}><SkipForward size={28} /></button>
           </div>
 
-          {/* Full Screen Progress Bar */}
+          {/* شريط التقدم الكبير (يظهر فقط في الوضع المكبر) */}
           {isPlayerExpanded && (
             <div className="w-full space-y-2 group cursor-pointer" onClick={onSeek}>
                <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
@@ -713,7 +722,7 @@ const App: React.FC = () => {
 
       {/* --- Mobile Bottom Navigation --- */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 h-20 glass border-t border-white/10 z-[150] flex items-center justify-around px-4 bg-black/80 backdrop-blur-3xl">
-        <MobNavBtn active={activeTab === 'home'} onClick={() => setActiveTab('home')} icon={<Home />} label="الرئيسية" />
+        <MobNavBtn active={activeTab === 'home'} onClick={goHome} icon={<Home />} label="الرئيسية" />
         <MobNavBtn active={activeTab === 'music'} onClick={() => setActiveTab('music')} icon={<MusicIcon />} label="موسيقى" />
         {/* زر المزيد لفتح الصفحات الإضافية */}
         <div className="relative">
@@ -742,7 +751,7 @@ const App: React.FC = () => {
                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-white/10 to-white/5 border border-white/10 flex items-center justify-center text-cyan-400 shadow-lg">
                     <Zap size={24} />
                  </div>
-                 <span className="text-xs font-bold text-white/80">{page.title}</span>
+                 <span className="text-xs font-bold text-white/80 truncate w-full text-center">{page.title}</span>
                </button>
              ))}
              {customPages.length === 0 && <div className="col-span-3 text-center text-white/20 py-4">لا توجد صفحات إضافية حالياً</div>}
