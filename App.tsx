@@ -897,9 +897,7 @@ const App: React.FC = () => {
             <Maximize2 size={20} />
           </button>
         </div>
-      </div>
-
-      {/* --- Full Screen Expanded Player --- */}
+      </div> 
       <div
         className={`fixed inset-0 z-[200] flex flex-col transition-transformers duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${isPlayerExpanded ? 'translate-y-0 opacity-100' : 'translate-y-[100%] opacity-0 pointer-events-none'}`}
       {/* --- Full Screen Expanded Player --- */}
