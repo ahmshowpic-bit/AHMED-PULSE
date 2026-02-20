@@ -227,6 +227,32 @@ const App: React.FC = () => {
     audioRef.current.play().then(() => setIsPlaying(true)).catch(console.error);
   };
 
+  // Media Session API - Lock Screen Integration
+  useEffect(() => {
+    if (!currentSong || !('mediaSession' in navigator)) return;
+
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: currentSong.name,
+      artist: 'AHMED PULSE',
+      album: currentSong.folder || 'Library',
+      artwork: [
+        { src: currentSong.image, sizes: '96x96',   type: 'image/jpeg' },
+        { src: currentSong.image, sizes: '128x128',  type: 'image/jpeg' },
+        { src: currentSong.image, sizes: '192x192',  type: 'image/jpeg' },
+        { src: currentSong.image, sizes: '256x256',  type: 'image/jpeg' },
+        { src: currentSong.image, sizes: '384x384',  type: 'image/jpeg' },
+        { src: currentSong.image, sizes: '512x512',  type: 'image/jpeg' },
+      ],
+    });
+
+    navigator.mediaSession.setActionHandler('play',     () => { audioRef.current?.play(); setIsPlaying(true); });
+    navigator.mediaSession.setActionHandler('pause',    () => { audioRef.current?.pause(); setIsPlaying(false); });
+    navigator.mediaSession.setActionHandler('previoustrack', () => prevSong());
+    navigator.mediaSession.setActionHandler('nexttrack',     () => nextSong());
+
+    navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+  }, [currentSong, isPlaying]);
+
   const nextSong = (e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     if (!currentSong || playlist.length === 0) return;
@@ -833,10 +859,11 @@ const App: React.FC = () => {
       {/* --- Premium Media Player Bar --- */}
       <div
         onClick={() => setIsPlayerExpanded(true)}
-        className={`fixed bottom-24 md:bottom-8 left-4 right-4 md:right-8 lg:left-[320px] h-24 rounded-[2rem] z-[100] border border-white/10 flex items-center justify-between px-4 md:px-8 shadow-2xl transition-all duration-500 cursor-pointer overflow-visible
+        className={`fixed bottom-[88px] md:bottom-6 left-2 right-2 md:left-4 md:right-6 lg:left-[296px] rounded-2xl md:rounded-[2rem] z-[100] border border-white/10 flex items-center justify-between px-3 md:px-6 shadow-2xl transition-all duration-500 cursor-pointer overflow-visible
           ${isPlaying ? 'shadow-[0_20px_40px_rgba(6,182,212,0.15)] ring-1 ring-cyan-500/30' : 'shadow-[0_20px_40px_rgba(0,0,0,0.5)] bg-black/40'}
           backdrop-blur-3xl bg-black/60
         `}
+        style={{ height: 'clamp(64px, 10vw, 88px)' }}
       >
         {/* Progress Bar Layer */}
         <div
@@ -852,37 +879,37 @@ const App: React.FC = () => {
         </div>
 
         {/* Player Left: Info */}
-        <div className="flex items-center gap-5 flex-1 z-10 min-w-0">
-          <div className="relative group">
-            <div className={`absolute inset-0 bg-cyan-400 blur-md rounded-2xl opacity-0 transition-opacity ${isPlaying ? 'opacity-30' : ''}`} />
+        <div className="flex items-center gap-2 md:gap-5 flex-1 z-10 min-w-0">
+          <div className="relative group flex-shrink-0">
+            <div className={`absolute inset-0 bg-cyan-400 blur-md rounded-xl md:rounded-2xl opacity-0 transition-opacity ${isPlaying ? 'opacity-30' : ''}`} />
             <div
-              className={`w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-cover bg-center border border-white/10 shadow-lg transition-transform duration-700 relative z-10 ${isPlaying ? 'scale-110 rotate-3 shadow-[0_10px_20px_rgba(0,0,0,0.5)]' : ''}`}
+              className={`w-10 h-10 md:w-14 md:h-14 lg:w-16 lg:h-16 rounded-xl md:rounded-2xl bg-cover bg-center border border-white/10 shadow-lg transition-transform duration-700 relative z-10 ${isPlaying ? 'scale-110 rotate-3 shadow-[0_10px_20px_rgba(0,0,0,0.5)]' : ''}`}
               style={{ backgroundImage: `url(${currentSong?.image || "https://images.unsplash.com/photo-1614850523459-c2f4c699c52e?q=80&w=400"})` }}
             />
           </div>
-          <div className="overflow-hidden">
-            <div className="font-black text-sm md:text-lg truncate max-w-[120px] md:max-w-[250px] drop-shadow-md text-white">{currentSong?.name || "اكتشف الموسيقى"}</div>
-            <div className="text-[10px] md:text-xs uppercase font-bold text-cyan-400 tracking-widest opacity-80 mt-1">{currentSong?.folder || "READY TO PLAY"}</div>
+          <div className="overflow-hidden min-w-0">
+            <div className="font-black text-xs md:text-base lg:text-lg truncate max-w-[90px] sm:max-w-[140px] md:max-w-[250px] drop-shadow-md text-white">{currentSong?.name || "اكتشف الموسيقى"}</div>
+            <div className="text-[9px] md:text-xs uppercase font-bold text-cyan-400 tracking-widest opacity-80 mt-0.5 truncate">{currentSong?.folder || "READY TO PLAY"}</div>
           </div>
         </div>
 
         {/* Player Center: Controls */}
-        <div className="flex items-center justify-center gap-4 md:gap-8 z-10" onClick={(e) => e.stopPropagation()}>
-          <button onClick={(e) => prevSong(e)} className="text-white/40 hover:text-white hover:scale-110 transition-all transform active:scale-95 p-2" aria-label="السابق"><SkipBack size={24} /></button>
+        <div className="flex items-center justify-center gap-2 md:gap-6 lg:gap-8 z-10 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+          <button onClick={(e) => prevSong(e)} className="text-white/40 hover:text-white hover:scale-110 transition-all transform active:scale-95 p-1 md:p-2 hidden xs:block" aria-label="السابق"><SkipBack size={20} className="md:w-6 md:h-6" /></button>
           <button
             onClick={(e) => togglePlay(e)}
-            className="w-16 h-16 rounded-full bg-white text-black flex items-center justify-center shadow-[0_10px_20px_rgba(255,255,255,0.2)] hover:scale-110 hover:shadow-[0_15px_30px_rgba(255,255,255,0.3)] active:scale-95 transition-all duration-300"
+            className="w-10 h-10 md:w-14 md:h-14 lg:w-16 lg:h-16 rounded-full bg-white text-black flex items-center justify-center shadow-[0_10px_20px_rgba(255,255,255,0.2)] hover:scale-110 hover:shadow-[0_15px_30px_rgba(255,255,255,0.3)] active:scale-95 transition-all duration-300"
             aria-label="تشغيل/ايقاف"
           >
-            {isPlaying ? <Pause size={28} fill="currentColor" /> : <Play size={28} fill="currentColor" className="ml-1" />}
+            {isPlaying ? <Pause size={20} fill="currentColor" className="md:w-6 md:h-6" /> : <Play size={20} fill="currentColor" className="ml-0.5 md:ml-1 md:w-6 md:h-6" />}
           </button>
-          <button onClick={(e) => nextSong(e)} className="text-white/40 hover:text-white hover:scale-110 transition-all transform active:scale-95 p-2" aria-label="التالي"><SkipForward size={24} /></button>
+          <button onClick={(e) => nextSong(e)} className="text-white/40 hover:text-white hover:scale-110 transition-all transform active:scale-95 p-1 md:p-2" aria-label="التالي"><SkipForward size={20} className="md:w-6 md:h-6" /></button>
         </div>
 
         {/* Player Right: Volume / Expand Icon */}
-        <div className="flex items-center justify-end flex-1 z-10 gap-4">
-          <div className="hidden md:flex items-center gap-4 bg-white/5 p-2 rounded-full border border-white/5 pr-4" onClick={e => e.stopPropagation()}>
-            <Volume2 size={20} className="text-white/60 hover:text-cyan-400 transition-colors" />
+        <div className="flex items-center justify-end flex-shrink-0 z-10 gap-2 md:gap-4 ml-2 md:ml-0">
+          <div className="hidden lg:flex items-center gap-3 bg-white/5 p-2 rounded-full border border-white/5 pr-4" onClick={e => e.stopPropagation()}>
+            <Volume2 size={18} className="text-white/60 hover:text-cyan-400 transition-colors" />
             <input
               type="range"
               min="0"
@@ -890,11 +917,11 @@ const App: React.FC = () => {
               step="0.01"
               value={volume}
               onChange={e => setVolume(parseFloat(e.target.value))}
-              className="w-24 h-1 accent-cyan-400 bg-white/10 rounded-full cursor-pointer hover:h-2 transition-all"
+              className="w-20 h-1 accent-cyan-400 bg-white/10 rounded-full cursor-pointer"
             />
           </div>
-          <button className="text-white/40 hover:text-white hover:scale-110 transition-all p-2 bg-white/5 rounded-full backdrop-blur-md border border-white/5">
-            <Maximize2 size={20} />
+          <button className="text-white/40 hover:text-white hover:scale-110 transition-all p-1.5 md:p-2 bg-white/5 rounded-full backdrop-blur-md border border-white/5">
+            <Maximize2 size={16} className="md:w-5 md:h-5" />
           </button>
         </div>
       </div>
@@ -924,43 +951,49 @@ const App: React.FC = () => {
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 flex flex-col items-center justify-center px-6 outline-none relative z-10 pb-20">
-          <div className="relative group mb-12">
-            <div className={`absolute -inset-8 bg-gradient-to-r from-cyan-500 to-purple-600 rounded-[3rem] blur-3xl transition-opacity duration-1000 ${isPlaying ? 'opacity-30 group-hover:opacity-50' : 'opacity-0'}`} />
+        <div className="flex-1 flex flex-col items-center justify-center px-4 md:px-6 outline-none relative z-10 pb-16 md:pb-20 overflow-y-auto">
+          <div className="relative group mb-6 md:mb-10">
+            <div className={`absolute -inset-4 md:-inset-8 bg-gradient-to-r from-cyan-500 to-purple-600 rounded-[2rem] md:rounded-[3rem] blur-3xl transition-opacity duration-1000 ${isPlaying ? 'opacity-30 group-hover:opacity-50' : 'opacity-0'}`} />
             <div
-              className={`w-72 h-72 md:w-[28rem] md:h-[28rem] rounded-[3rem] bg-cover bg-center shadow-[0_30px_60px_rgba(0,0,0,0.8)] border border-white/10 transition-transform duration-1000 relative z-10 ${isPlaying ? 'scale-100' : 'scale-95 grayscale-[20%]'}`}
-              style={{ backgroundImage: `url(${currentSong?.image || "https://images.unsplash.com/photo-1614850523459-c2f4c699c52e?q=80&w=600"})` }}
+              className={`rounded-[2rem] md:rounded-[3rem] bg-cover bg-center shadow-[0_30px_60px_rgba(0,0,0,0.8)] border border-white/10 transition-transform duration-1000 relative z-10 ${isPlaying ? 'scale-100' : 'scale-95 grayscale-[20%]'}`}
+              style={{
+                backgroundImage: `url(${currentSong?.image || "https://images.unsplash.com/photo-1614850523459-c2f4c699c52e?q=80&w=600"})`,
+                width: 'clamp(240px, 60vw, 420px)',
+                height: 'clamp(240px, 60vw, 420px)',
+              }}
             />
           </div>
 
-          <h2 className="text-4xl md:text-7xl font-black text-white mb-4 tracking-tighter drop-shadow-2xl text-center px-4 leading-tight">{currentSong?.name || "اختر أغنية للبدء"}</h2>
+          <h2 className="font-black text-white mb-3 tracking-tighter drop-shadow-2xl text-center px-4 leading-tight"
+            style={{ fontSize: 'clamp(1.5rem, 5vw, 4rem)' }}
+          >{currentSong?.name || "اختر أغنية للبدء"}</h2>
 
-          <div className="flex items-center gap-4 mb-14">
-            <span className="bg-white/5 border border-white/10 px-4 py-1.5 rounded-full text-white/60 text-xs font-bold uppercase tracking-widest">High Quality</span>
+          <div className="flex items-center gap-3 md:gap-4 mb-8 md:mb-12 flex-wrap justify-center">
+            <span className="bg-white/5 border border-white/10 px-3 py-1 rounded-full text-white/60 text-xs font-bold uppercase tracking-widest">High Quality</span>
             <span className="text-cyan-400 font-bold uppercase tracking-[0.2em] text-sm">AHMED PULSE</span>
           </div>
 
           {/* Progress */}
-          <div className="w-full max-w-3xl mb-16 px-4" onClick={onSeek}>
-            <div className="h-3 bg-white/10 rounded-full overflow-hidden relative cursor-pointer group shadow-inner">
+          <div className="w-full max-w-xl md:max-w-3xl mb-8 md:mb-14 px-4" onClick={onSeek}>
+            <div className="h-2 md:h-3 bg-white/10 rounded-full overflow-hidden relative cursor-pointer group shadow-inner">
               <div
                 className="absolute top-0 right-0 h-full bg-gradient-to-l from-cyan-400 via-blue-500 to-purple-600 transition-all duration-200"
                 style={{ width: `${progress}%` }}
               />
-              <div className="absolute top-0 bottom-0 right-0 w-4 bg-white rounded-full opacity-0 group-hover:opacity-100 shadow-[0_0_10px_white] transition-opacity" style={{ right: `calc(${progress}% - 8px)` }} />
             </div>
           </div>
 
           {/* Controls */}
-          <div className="flex items-center justify-center gap-8 md:gap-16">
-            <button onClick={(e) => prevSong(e)} className="text-white/30 hover:text-white hover:scale-110 active:scale-95 transition-all p-4"><SkipBack size={40} className="md:w-12 md:h-12" /></button>
+          <div className="flex items-center justify-center gap-6 md:gap-10 lg:gap-16">
+            <button onClick={(e) => prevSong(e)} className="text-white/30 hover:text-white hover:scale-110 active:scale-95 transition-all p-3 md:p-4"><SkipBack size={32} className="md:w-10 md:h-10" /></button>
             <button
               onClick={(e) => togglePlay(e)}
-              className="w-28 h-28 md:w-32 md:h-32 rounded-full bg-white text-black flex items-center justify-center shadow-[0_20px_50px_rgba(255,255,255,0.2)] hover:scale-105 active:scale-95 transition-all duration-300"
+              className="rounded-full bg-white text-black flex items-center justify-center shadow-[0_20px_50px_rgba(255,255,255,0.2)] hover:scale-105 active:scale-95 transition-all duration-300"
+              style={{ width: 'clamp(80px, 15vw, 112px)', height: 'clamp(80px, 15vw, 112px)' }}
             >
-              {isPlaying ? <Pause size={48} fill="currentColor" /> : <Play size={48} fill="currentColor" className="ml-2" />}
+              {isPlaying ? <Pause size={40} fill="currentColor" className="md:w-12 md:h-12" /> : <Play size={40} fill="currentColor" className="ml-1 md:ml-2 md:w-12 md:h-12" />}
             </button>
-            <button onClick={(e) => nextSong(e)} className="text-white/30 hover:text-white hover:scale-110 active:scale-95 transition-all p-4"><SkipForward size={40} className="md:w-12 md:h-12" /></button>
+            <button onClick={(e) => nextSong(e)} className="text-white/30 hover:text-white hover:scale-110 active:scale-95 transition-all p-3 md:p-4"><SkipForward size={32} className="md:w-10 md:h-10" /></button>
           </div>
         </div>
       </div>
