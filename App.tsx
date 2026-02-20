@@ -897,13 +897,11 @@ const App: React.FC = () => {
             <Maximize2 size={20} />
           </button>
         </div>
-      </div> 
-      <div
-        className={`fixed inset-0 z-[200] flex flex-col transition-transformers duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${isPlayerExpanded ? 'translate-y-0 opacity-100' : 'translate-y-[100%] opacity-0 pointer-events-none'}`}
+      </div>
+
       {/* --- Full Screen Expanded Player --- */}
       <div
         className={`fixed inset-0 z-[200] flex flex-col transition-transformers duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${isPlayerExpanded ? 'translate-y-0 opacity-100' : 'translate-y-[100%] opacity-0 pointer-events-none'}`}
-        style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
         <div className="absolute inset-0 bg-black/80 backdrop-blur-[50px] z-0" />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-80 z-0" />
