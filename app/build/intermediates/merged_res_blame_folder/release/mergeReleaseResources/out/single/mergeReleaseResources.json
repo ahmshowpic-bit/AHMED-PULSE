@@ -94,5 +94,9 @@
     {
         "merged": "app.vercel.ahmed_pulse.twa.app-release-25:/drawable-mdpi_ic_notification_icon.png.flat",
         "source": "app.vercel.ahmed_pulse.twa.app-main-26:/drawable-mdpi/ic_notification_icon.png"
+    },
+    {
+        "merged": "app.vercel.ahmed_pulse.twa.app-release-25:/raw_web_app_manifest.json.flat",
+        "source": "app.vercel.ahmed_pulse.twa.app-main-26:/raw/web_app_manifest.json"
     }
 ]

@@ -7673,6 +7673,7 @@ app.vercel.ahmed_pulse.twa.R$color
 app.vercel.ahmed_pulse.twa.R$drawable
 app.vercel.ahmed_pulse.twa.R$integer
 app.vercel.ahmed_pulse.twa.R$mipmap
+app.vercel.ahmed_pulse.twa.R$raw
 app.vercel.ahmed_pulse.twa.R$string
 app.vercel.ahmed_pulse.twa.R$xml
 app.vercel.ahmed_pulse.twa.R

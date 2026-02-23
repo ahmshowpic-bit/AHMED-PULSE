@@ -5,8 +5,8 @@
     "start_url": "https://ahmed-pulse.vercel.app/",
     "scope": "https://ahmed-pulse.vercel.app/",
     "display": "standalone",
-    "background_color": "#050508",
-    "theme_color": "#00f2ff",
+    "background_color": "#000000",
+    "theme_color": "#000000",
     "orientation": "portrait",
     "lang": "ar",
     "icons": [
