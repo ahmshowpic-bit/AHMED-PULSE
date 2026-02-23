@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.vercel.ahmed_pulse.twa",
+      "sha256_cert_fingerprints": [
+        "1C:AD:74:ED:6D:39:BE:19:83:01:53:9A:FF:80:EF:10:9F:5A:16:AB:4A:6A:48:5E:92:90:A4:25:CC:03:51:42"
+      ]
+    }
+  }
+]

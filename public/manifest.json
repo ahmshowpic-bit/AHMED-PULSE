@@ -1,0 +1,38 @@
+{
+    "name": "AHMED PULSE | ULTIMATE",
+    "short_name": "AhmedPulse",
+    "description": "A modern music library and community hub powered by Firebase.",
+    "start_url": "https://ahmed-pulse.vercel.app/",
+    "scope": "https://ahmed-pulse.vercel.app/",
+    "display": "standalone",
+    "background_color": "#050508",
+    "theme_color": "#00f2ff",
+    "orientation": "portrait",
+    "lang": "ar",
+    "icons": [
+        {
+            "src": "/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "maskable"
+        },
+        {
+            "src": "/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ]
+}
