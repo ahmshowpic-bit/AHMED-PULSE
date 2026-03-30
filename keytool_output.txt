@@ -1,0 +1,26 @@
+Alias name: ahmed-pulse
+Creation date: Feb 23, 2026
+Entry type: PrivateKeyEntry
+Certificate chain length: 1
+Certificate[1]:
+Owner: CN=Ahmed Pulse, OU=AhmedPulse, O=AhmedPulse, L=Cairo, ST=Cairo, C=EG
+Issuer: CN=Ahmed Pulse, OU=AhmedPulse, O=AhmedPulse, L=Cairo, ST=Cairo, C=EG
+Serial number: aca7668c6e08e1e5
+Valid from: Mon Feb 23 23:35:15 EET 2026 until: Sat Jul 12 00:35:15 EEST 2053
+Certificate fingerprints:
+	 SHA1: F3:EB:59:95:EF:F1:7B:13:93:4C:9D:4A:A3:4F:7E:B5:31:01:36:D8
+	 SHA256: 1C:AD:74:ED:6D:39:BE:19:83:01:53:9A:FF:80:EF:10:9F:5A:16:AB:4A:6A:48:5E:92:90:A4:25:CC:03:51:42
+Signature algorithm name: SHA256withRSA
+Subject Public Key Algorithm: 2048-bit RSA key
+Version: 3
+
+Extensions: 
+
+#1: ObjectId: 2.5.29.14 Criticality=false
+SubjectKeyIdentifier [
+KeyIdentifier [
+0000: FF A2 D4 CA A8 3A 48 4B   BF 02 FB 6F F2 C7 AC 0A  .....:HK...o....
+0010: 15 4F B4 F5                                        .O..
+]
+]
+
