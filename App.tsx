@@ -31,6 +31,7 @@ import {
 import {
   db, auth, googleProvider, ADMIN_EMAIL,
   ref, set, onValue, push, update, remove, runTransaction,
+  query, limitToLast, orderByKey, endBefore, get,
   signInWithPopup, signOut, onAuthStateChanged, User
 } from './firebase';
 import { Song, DiaryPost, ContactMessage, CustomPage, AppSettings, TabId } from './types';
@@ -52,6 +53,9 @@ const VisitorBadge: React.FC<{ count: number; visible: boolean }> = ({ count, vi
     </div>
   );
 };
+
+// حجم الدفعة الواحدة عند التحميل (توفير باقة الزائر)
+const PAGE_SIZE = 20;
 
 const App: React.FC = () => {
   // State
@@ -109,8 +113,49 @@ const App: React.FC = () => {
   const [selectedFolder, setSelectedFolder] = useState('new');
   const [newFolderName, setNewFolderName] = useState('');
 
+  // Pagination State (توفير بيانات الزائر)
+  const [hasMoreSongs, setHasMoreSongs] = useState(false);
+  const [hasMoreDiaries, setHasMoreDiaries] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+
   // Calculate Hero Song (The default song selected by admin)
   const heroSong = useMemo(() => songs.find(s => s.id === settings.defaultSongId), [songs, settings.defaultSongId]);
+
+  // تحميل دفعة أقدم من الأغاني عند الطلب فقط
+  const loadMoreSongs = async () => {
+    if (loadingMore || songs.length === 0) return;
+    setLoadingMore(true);
+    try {
+      const oldestKey = songs[0].id;
+      const snap = await get(query(ref(db, 'music'), orderByKey(), endBefore(oldestKey), limitToLast(PAGE_SIZE)));
+      const older: Song[] = [];
+      snap.forEach((child) => { older.push({ id: child.key!, ...child.val() }); });
+      if (older.length === 0) { setHasMoreSongs(false); }
+      else {
+        setSongs(prev => [...older, ...prev]);
+        setHasMoreSongs(older.length >= PAGE_SIZE);
+      }
+    } catch (e) { console.warn("Load more songs failed", e); }
+    setLoadingMore(false);
+  };
+
+  // تحميل دفعة أقدم من اليوميات عند الطلب فقط
+  const loadMoreDiaries = async () => {
+    if (loadingMore || diaries.length === 0) return;
+    setLoadingMore(true);
+    try {
+      const oldestKey = diaries[diaries.length - 1].id;
+      const snap = await get(query(ref(db, 'diaries'), orderByKey(), endBefore(oldestKey), limitToLast(PAGE_SIZE)));
+      const older: DiaryPost[] = [];
+      snap.forEach((child) => { older.push({ id: child.key!, ...child.val() }); });
+      if (older.length === 0) { setHasMoreDiaries(false); }
+      else {
+        setDiaries(prev => [...prev, ...older.reverse()]);
+        setHasMoreDiaries(older.length >= PAGE_SIZE);
+      }
+    } catch (e) { console.warn("Load more diaries failed", e); }
+    setLoadingMore(false);
+  };
 
   // Online / Offline detection
   useEffect(() => {
@@ -210,52 +255,62 @@ const App: React.FC = () => {
       sessionStorage.setItem('visited', 'true');
     }
 
-    const unsubMusic = onValue(ref(db, 'music'), (snap) => {
+    // تحميل آخر PAGE_SIZE أغنية فقط بدلاً من المكتبة كاملة
+    const unsubMusic = onValue(query(ref(db, 'music'), orderByKey(), limitToLast(PAGE_SIZE)), (snap) => {
       const data: Song[] = [];
       snap.forEach((child) => {
         data.push({ id: child.key!, ...child.val() });
       });
       setSongs(data);
+      setHasMoreSongs(data.length >= PAGE_SIZE);
       localStorage.setItem('pulse_music', JSON.stringify(data));
     }, (error) => console.warn("Music access restricted:", error.message));
 
-    const unsubDiaries = onValue(ref(db, 'diaries'), (snap) => {
+    // تحميل آخر PAGE_SIZE يومية فقط، والباقي عند الطلب
+    const unsubDiaries = onValue(query(ref(db, 'diaries'), orderByKey(), limitToLast(PAGE_SIZE)), (snap) => {
       const data: DiaryPost[] = [];
       snap.forEach((child) => {
         data.push({ id: child.key!, ...child.val() });
       });
       const reversed = data.reverse();
       setDiaries(reversed);
+      setHasMoreDiaries(data.length >= PAGE_SIZE);
       localStorage.setItem('pulse_diaries', JSON.stringify(reversed));
     }, (error) => console.warn("Diaries access restricted:", error.message));
 
-    const unsubPages = onValue(ref(db, 'custom_pages'), (snap) => {
+    // الصفحات المخصصة تُقرأ مرة واحدة فقط (بدون اتصال دائم)
+    get(ref(db, 'custom_pages')).then((snap) => {
       const data: CustomPage[] = [];
       snap.forEach((child) => {
         data.push({ id: child.key!, ...child.val() });
       });
       setCustomPages(data);
       localStorage.setItem('pulse_pages', JSON.stringify(data));
-    }, (error) => console.warn("Pages access restricted:", error.message));
-
-    const unsubInbox = onValue(ref(db, 'inbox'), (snap) => {
-      const data: ContactMessage[] = [];
-      snap.forEach((child) => {
-        data.push({ id: child.key!, ...child.val() });
-      });
-      setMessages(data);
-      localStorage.setItem('pulse_inbox', JSON.stringify(data));
-    }, (error) => console.warn("Inbox access restricted:", error.message));
+    }).catch((error) => console.warn("Pages access restricted:", error.message));
 
     return () => {
       unsubAuth();
       unsubSettings();
       unsubMusic();
       unsubDiaries();
-      unsubPages();
-      unsubInbox();
     };
   }, []);
+
+  // البريد الوارد يُحمَّل فقط عند دخول الأدمن (الزائر لا يحمّله إطلاقاً)
+  useEffect(() => {
+    if (!isAdmin) {
+      setMessages([]);
+      return;
+    }
+    const unsubInbox = onValue(ref(db, 'inbox'), (snap) => {
+      const data: ContactMessage[] = [];
+      snap.forEach((child) => {
+        data.push({ id: child.key!, ...child.val() });
+      });
+      setMessages(data);
+    }, (error) => console.warn("Inbox access restricted:", error.message));
+    return () => unsubInbox();
+  }, [isAdmin]);
 
   // Pre-load Default Song
   useEffect(() => {
@@ -815,6 +870,15 @@ const App: React.FC = () => {
                 ))}
               </div>
             )}
+            {hasMoreSongs && !currentFolder && (
+              <button
+                onClick={loadMoreSongs}
+                disabled={loadingMore}
+                className="mt-10 w-full py-5 rounded-[2rem] bg-white/5 border border-white/10 text-white/60 font-black hover:bg-white/10 hover:text-white transition-all disabled:opacity-40"
+              >
+                {loadingMore ? 'جاري التحميل...' : 'تحميل المزيد من الأغاني'}
+              </button>
+            )}
           </section>
 
           {/* Diaries/Community Section */}
@@ -894,6 +958,15 @@ const App: React.FC = () => {
                   </div>
                 </div>
               ))}
+              {hasMoreDiaries && (
+                <button
+                  onClick={loadMoreDiaries}
+                  disabled={loadingMore}
+                  className="w-full py-5 rounded-[2rem] bg-white/5 border border-white/10 text-white/60 font-black hover:bg-white/10 hover:text-white transition-all disabled:opacity-40"
+                >
+                  {loadingMore ? 'جاري التحميل...' : 'تحميل يوميات أقدم'}
+                </button>
+              )}
             </div>
           </section>
 
