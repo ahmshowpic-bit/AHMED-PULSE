@@ -63,11 +63,6 @@ const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [showAdminModal, setShowAdminModal] = useState(false);
-  // مسودة منفصلة للإعدادات: الكتابة هنا متأثرش على خلفية الموقع الحية إلا بعد الحفظ
-  const [draftSettings, setDraftSettings] = useState<AppSettings>(settings);
-  useEffect(() => {
-    if (showAdminModal) setDraftSettings(settings);
-  }, [showAdminModal]);
   const [adminTab, setAdminTab] = useState('inbox');
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
@@ -90,6 +85,11 @@ const App: React.FC = () => {
     defaultSongId: ""
   });
   const [songs, setSongs] = useState<Song[]>([]);
+  // مسودة منفصلة للإعدادات: الكتابة هنا متأثرش على خلفية الموقع الحية إلا بعد الحفظ
+  const [draftSettings, setDraftSettings] = useState<AppSettings>(settings);
+  useEffect(() => {
+    if (showAdminModal) setDraftSettings(settings);
+  }, [showAdminModal]);
   const [customPages, setCustomPages] = useState<CustomPage[]>([]);
   const [diaries, setDiaries] = useState<DiaryPost[]>([]);
   const [messages, setMessages] = useState<ContactMessage[]>([]);
