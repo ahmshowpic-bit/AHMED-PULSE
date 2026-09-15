@@ -577,7 +577,7 @@ const App: React.FC = () => {
           src={settings.heroImg}
         />
       )}
-      <div className="absolute inset-0 z-[1] bg-gradient-to-t from-black via-transparent to-black/30 pointer-events-none" />
+      <div className="absolute inset-0 z-[1] bg-gradient-to-t from-[#1a0f05]/90 via-transparent to-black/20 pointer-events-none" />
 
       {/* --- Mobile Header --- */}
       <header className="md:hidden fixed top-0 left-0 right-0 z-50 grid grid-cols-3 items-center px-6 py-4 bg-black/40 backdrop-blur-2xl border-b border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
