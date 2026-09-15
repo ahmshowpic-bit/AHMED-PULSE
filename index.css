@@ -15,6 +15,10 @@
 }
 
 :root {
+  /* المتغيرات الأساسية (الوضع الليلي الافتراضي) */
+  --theme-base-black: 0 0 0;
+  --theme-base-white: 255 255 255;
+
   --color-bg: #050508;
   --color-primary: #00f2ff;
   --color-primary-glow: rgba(0, 242, 255, 0.3);
@@ -24,6 +28,24 @@
   --font-main: 'Tajawal', sans-serif;
   --border-radius: 12px;
   --transition: all 0.3s ease;
+}
+
+/* =============================================
+   System Light Mode Detection (الربط التلقائي)
+   ============================================= */
+@media (prefers-color-scheme: light) {
+  :root {
+    /* قلب الألوان بذكاء لتعمل مع كلاسات Tailwind الموجودة */
+    --theme-base-black: 240 240 245; /* رمادي فاتح جداً بديل للأسود */
+    --theme-base-white: 20 20 25;    /* رمادي داكن بديل للأبيض (للنصوص والحدود) */
+
+    --color-bg: #f3f4f6;
+    --color-primary: #009eb5; /* سماوي أغمق قليلاً ليناسب الخلفية الفاتحة */
+    --color-primary-glow: rgba(0, 158, 181, 0.3);
+    --color-surface: rgba(255, 255, 255, 0.8);
+    --color-text: #111827;
+    --color-text-muted: rgba(17, 24, 39, 0.7);
+  }
 }
 
 html,
@@ -141,13 +163,8 @@ textarea {
    Animations
    ============================================= */
 @keyframes kf-zoom-in {
-  0% {
-    transform: scale(1);
-  }
-
-  100% {
-    transform: scale(1.1);
-  }
+  0% { transform: scale(1); }
+  100% { transform: scale(1.1); }
 }
 
 .anim-zoom-in {
@@ -155,15 +172,8 @@ textarea {
 }
 
 @keyframes pulse-glow {
-
-  0%,
-  100% {
-    box-shadow: 0 0 8px var(--color-primary-glow);
-  }
-
-  50% {
-    box-shadow: 0 0 20px rgba(0, 242, 255, 0.6);
-  }
+  0%, 100% { box-shadow: 0 0 8px var(--color-primary-glow); }
+  50% { box-shadow: 0 0 20px rgba(0, 242, 255, 0.6); }
 }
 
 .pulse-glow {
@@ -171,15 +181,8 @@ textarea {
 }
 
 @keyframes fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .fade-in {
