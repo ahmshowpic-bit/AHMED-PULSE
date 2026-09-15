@@ -41,7 +41,7 @@ const VisitorBadge: React.FC<{ count: number; visible: boolean }> = ({ count, vi
   if (!visible) return null;
   return (
     <div className="visitor-box bg-black/40 backdrop-blur-xl border border-white/10 p-4 rounded-2xl flex items-center gap-4 transition-all duration-500 hover:bg-white/10 hover:border-cyan-500/50 group shadow-2xl">
-      <div className="text-cyan-400 bg-cyan-500/10 p-3 rounded-xl group-hover:scale-110 group-hover:bg-cyan-500 group-hover:text-black transition-all shadow-[0_0_15px_rgba(6,182,212,0.2)]">
+      <div className="text-cyan-400 bg-cyan-500/10 p-3 rounded-xl group-hover:scale-110 group-hover:bg-cyan-500 group-hover:text-black transition-all shadow-[0_0_15px_rgba(245,158,11,0.2)]">
         <Users size={20} />
       </div>
       <div>
@@ -50,24 +50,6 @@ const VisitorBadge: React.FC<{ count: number; visible: boolean }> = ({ count, vi
           {count.toLocaleString()}
         </span>
       </div>
-    </div>
-  );
-};
-
-// شارة اتصال صغيرة جنب الشعار بدل الشريط الكامل
-const ConnectionBadge: React.FC<{ status: 'offline' | 'online' | null }> = ({ status }) => {
-  if (!status) return null;
-  const isOffline = status === 'offline';
-  return (
-    <div
-      title={isOffline ? 'لا يوجد اتصال بالإنترنت' : 'تم الاتصال بالإنترنت'}
-      className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 transition-colors ${isOffline ? 'bg-red-500/15' : 'bg-emerald-500/15'}`}
-    >
-      {isOffline ? (
-        <WifiOff size={12} className="text-red-400" />
-      ) : (
-        <CheckCircle size={12} className="text-emerald-400" />
-      )}
     </div>
   );
 };
@@ -598,28 +580,32 @@ const App: React.FC = () => {
       <div className="absolute inset-0 z-[1] bg-gradient-to-t from-black via-transparent to-black/30 pointer-events-none" />
 
       {/* --- Mobile Header --- */}
-      <header className="md:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-4 bg-black/40 backdrop-blur-2xl border-b border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
+      <header className="md:hidden fixed top-0 left-0 right-0 z-50 grid grid-cols-3 items-center px-6 py-4 bg-black/40 backdrop-blur-2xl border-b border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
+        <div className="justify-self-start" />
         <div
           onClick={() => setActiveTab('home')}
-          className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 tracking-tighter cursor-pointer active:scale-95 transition-transform flex items-center gap-2 drop-shadow-lg"
+          className="justify-self-center text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 tracking-tighter cursor-pointer active:scale-95 transition-transform flex items-center gap-2 drop-shadow-lg"
         >
-          <Zap className="text-cyan-400" size={24} />
+          {isOffline ? (
+            <WifiOff className="text-red-400" size={24} />
+          ) : (
+            <Zap className="text-cyan-400" size={24} />
+          )}
           AHMED PULSE
         </div>
-        <div className="flex items-center gap-3">
-          <ConnectionBadge status={isOffline ? 'offline' : (showOnlineMsg ? 'online' : null)} />
+        <div className="justify-self-end flex items-center gap-3">
           {/* Download Button */}
           {deferredPrompt && (
             <button
               onClick={handleInstallClick}
-              className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-r from-purple-500 to-cyan-500 text-white shadow-[0_0_15px_rgba(6,182,212,0.5)] animate-pulse hover:scale-110 transition-transform"
+              className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-r from-purple-500 to-cyan-500 text-white shadow-[0_0_15px_rgba(245,158,11,0.5)] animate-pulse hover:scale-110 transition-transform"
             >
               <Download size={18} />
             </button>
           )}
 
           {isAdmin && (
-            <button onClick={() => setShowAdminModal(true)} className="w-10 h-10 rounded-full bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.2)] hover:bg-cyan-500 hover:text-black transition-all">
+            <button onClick={() => setShowAdminModal(true)} className="w-10 h-10 rounded-full bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shadow-[0_0_10px_rgba(245,158,11,0.2)] hover:bg-cyan-500 hover:text-black transition-all">
               <Shield size={20} />
             </button>
           )}
@@ -632,13 +618,16 @@ const App: React.FC = () => {
         <div className="absolute top-0 left-0 right-0 h-32 bg-cyan-500/10 blur-[50px] pointer-events-none" />
 
         <div className="mb-12 cursor-pointer relative z-10 flex items-center gap-3" onClick={() => setActiveTab('home')}>
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center shadow-[0_10px_20px_rgba(6,182,212,0.3)]">
-            <Zap size={24} className="text-white" />
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center shadow-[0_10px_20px_rgba(245,158,11,0.3)]">
+            {isOffline ? (
+              <WifiOff size={24} className="text-white" />
+            ) : (
+              <Zap size={24} className="text-white" />
+            )}
           </div>
           <h1 className="text-3xl font-black bg-gradient-to-br from-white via-cyan-100 to-cyan-400 bg-clip-text text-transparent tracking-tighter hover:scale-105 origin-left transition-transform drop-shadow-md">
             PULSE
           </h1>
-          <ConnectionBadge status={isOffline ? 'offline' : (showOnlineMsg ? 'online' : null)} />
         </div>
 
         <div className="mb-8">
@@ -744,7 +733,7 @@ const App: React.FC = () => {
                   <div
                     key={song.id}
                     onClick={() => playSong(song, featuredSongs)}
-                    className="carousel-item flex-shrink-0 w-64 md:w-80 bg-black/40 backdrop-blur-xl border border-white/10 rounded-[2.5rem] overflow-hidden group cursor-pointer hover:border-cyan-500/50 hover:shadow-[0_15px_30px_rgba(6,182,212,0.15)] transition-all duration-500 snap-center"
+                    className="carousel-item flex-shrink-0 w-64 md:w-80 bg-black/40 backdrop-blur-xl border border-white/10 rounded-[2.5rem] overflow-hidden group cursor-pointer hover:border-cyan-500/50 hover:shadow-[0_15px_30px_rgba(245,158,11,0.15)] transition-all duration-500 snap-center"
                   >
                     <div className="relative aspect-square m-3 rounded-[2rem] overflow-hidden">
                       <div className="absolute inset-0 bg-cover bg-center transition-transform duration-1000 group-hover:scale-110" style={{ backgroundImage: `url(${song.image})` }} />
@@ -778,7 +767,7 @@ const App: React.FC = () => {
                 {latestDiaries.map(post => (
                   <div
                     key={post.id}
-                    className="bg-black/40 backdrop-blur-xl border border-white/10 p-8 rounded-[2.5rem] hover:bg-white/5 hover:border-purple-500/30 transition-all duration-500 flex flex-col gap-6 group hover:shadow-[0_10px_30px_rgba(168,85,247,0.1)] relative overflow-hidden"
+                    className="bg-black/40 backdrop-blur-xl border border-white/10 p-8 rounded-[2.5rem] hover:bg-white/5 hover:border-purple-500/30 transition-all duration-500 flex flex-col gap-6 group hover:shadow-[0_10px_30px_rgba(176,83,46,0.1)] relative overflow-hidden"
                   >
                     <div className="absolute -top-10 -right-10 w-32 h-32 bg-purple-500/10 blur-[40px] rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
                     <div className="flex items-center gap-4 relative z-10">
@@ -804,7 +793,7 @@ const App: React.FC = () => {
           <section className={`${activeTab === 'music' ? 'block' : 'hidden'} animate-fade-in-up`}>
             <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-16 mt-12 gap-6">
               <h2 className="text-4xl md:text-5xl font-black flex items-center gap-4 drop-shadow-md">
-                <div className="w-16 h-16 rounded-2xl bg-cyan-500/10 flex items-center justify-center text-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.2)]">
+                <div className="w-16 h-16 rounded-2xl bg-cyan-500/10 flex items-center justify-center text-cyan-400 shadow-[0_0_20px_rgba(245,158,11,0.2)]">
                   <MusicIcon size={32} />
                 </div>
                 المكتبة الصوتية
@@ -829,7 +818,7 @@ const App: React.FC = () => {
                     <div
                       key={song.id}
                       onClick={() => playSong(song, folders[currentFolder])}
-                      className={`flex items-center gap-6 p-4 rounded-3xl cursor-pointer transition-all duration-300 border backdrop-blur-md group ${currentSong?.id === song.id ? 'bg-cyan-500/10 border-cyan-500/40 shadow-[0_10px_30px_rgba(6,182,212,0.15)] scale-[1.02]' : 'bg-black/40 border-white/5 hover:bg-white/5 hover:border-white/20'}`}
+                      className={`flex items-center gap-6 p-4 rounded-3xl cursor-pointer transition-all duration-300 border backdrop-blur-md group ${currentSong?.id === song.id ? 'bg-cyan-500/10 border-cyan-500/40 shadow-[0_10px_30px_rgba(245,158,11,0.15)] scale-[1.02]' : 'bg-black/40 border-white/5 hover:bg-white/5 hover:border-white/20'}`}
                     >
                       <div className="relative">
                         <div className={`w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-cover bg-center shadow-lg transition-transform duration-500 ${currentSong?.id === song.id ? 'scale-105' : 'group-hover:scale-110'}`} style={{ backgroundImage: `url(${song.image})` }} />
@@ -843,7 +832,7 @@ const App: React.FC = () => {
                       </div>
                       {currentSong?.id === song.id ? (
                         <div className="flex gap-1.5 items-end h-8 px-4">
-                          {[1, 2, 3, 4, 5].map(b => <div key={b} className="w-1.5 bg-cyan-400 rounded-full animate-pulse shadow-[0_0_8px_#00f2ff]" style={{ height: `${Math.random() * 100}%`, animationDelay: `${b * 0.15}s` }} />)}
+                          {[1, 2, 3, 4, 5].map(b => <div key={b} className="w-1.5 bg-cyan-400 rounded-full animate-pulse shadow-[0_0_8px_#fbbf24]" style={{ height: `${Math.random() * 100}%`, animationDelay: `${b * 0.15}s` }} />)}
                         </div>
                       ) : (
                         <div className="w-12 h-12 rounded-full border border-white/10 flex items-center justify-center text-white/20 group-hover:text-cyan-400 group-hover:border-cyan-500/30 transition-all opacity-50 group-hover:opacity-100">
@@ -860,7 +849,7 @@ const App: React.FC = () => {
                   <div
                     key={folder}
                     onClick={() => setCurrentFolder(folder)}
-                    className="bg-black/40 backdrop-blur-xl border border-white/10 p-8 rounded-[3rem] flex flex-col items-center text-center cursor-pointer hover:-translate-y-2 hover:border-cyan-500/50 transition-all duration-300 group relative overflow-hidden shadow-xl hover:shadow-[0_20px_40px_rgba(6,182,212,0.15)]"
+                    className="bg-black/40 backdrop-blur-xl border border-white/10 p-8 rounded-[3rem] flex flex-col items-center text-center cursor-pointer hover:-translate-y-2 hover:border-cyan-500/50 transition-all duration-300 group relative overflow-hidden shadow-xl hover:shadow-[0_20px_40px_rgba(245,158,11,0.15)]"
                   >
                     <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                     <div className="absolute top-0 right-0 p-6 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-4 group-hover:translate-x-0">
@@ -982,7 +971,7 @@ const App: React.FC = () => {
               <div className="absolute top-0 left-0 w-64 h-64 bg-cyan-500/20 blur-[100px] rounded-full pointer-events-none" />
               <div className="absolute bottom-0 right-0 w-64 h-64 bg-purple-500/10 blur-[100px] rounded-full pointer-events-none" />
 
-              <div className="w-28 h-28 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-500/30 rounded-[2.5rem] flex items-center justify-center text-cyan-400 mx-auto mb-10 shadow-[0_0_30px_rgba(6,182,212,0.2)] relative z-10">
+              <div className="w-28 h-28 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-500/30 rounded-[2.5rem] flex items-center justify-center text-cyan-400 mx-auto mb-10 shadow-[0_0_30px_rgba(245,158,11,0.2)] relative z-10">
                 <Mail size={56} />
               </div>
               <h2 className="text-5xl font-black mb-6 text-transparent bg-clip-text bg-gradient-to-r from-white to-cyan-100 relative z-10 tracking-tight">تواصل مباشر</h2>
@@ -1010,7 +999,7 @@ const App: React.FC = () => {
                 </div>
                 <button
                   onClick={sendMessage}
-                  className="w-full py-6 bg-gradient-to-r from-cyan-500 via-blue-600 to-purple-600 rounded-[2.5rem] font-black text-2xl shadow-[0_15px_30px_rgba(6,182,212,0.3)] hover:shadow-[0_20px_40px_rgba(6,182,212,0.5)] hover:-translate-y-1 active:translate-y-1 transition-all mt-8 flex items-center justify-center gap-4 group"
+                  className="w-full py-6 bg-gradient-to-r from-cyan-500 via-blue-600 to-purple-600 rounded-[2.5rem] font-black text-2xl shadow-[0_15px_30px_rgba(245,158,11,0.3)] hover:shadow-[0_20px_40px_rgba(245,158,11,0.5)] hover:-translate-y-1 active:translate-y-1 transition-all mt-8 flex items-center justify-center gap-4 group"
                 >
                   <Send size={28} className="group-hover:translate-x-[-8px] transition-transform" /> إرسال الرسالة الآن
                 </button>
@@ -1046,7 +1035,7 @@ const App: React.FC = () => {
       <div
         onClick={() => setIsPlayerExpanded(true)}
         className={`fixed bottom-[88px] md:bottom-6 left-2 right-2 md:left-4 md:right-6 lg:left-[296px] rounded-2xl md:rounded-[2rem] z-[100] border border-white/10 flex items-center justify-between px-3 md:px-6 shadow-2xl transition-all duration-500 cursor-pointer overflow-visible
-          ${isPlaying ? 'shadow-[0_20px_40px_rgba(6,182,212,0.15)] ring-1 ring-cyan-500/30' : 'shadow-[0_20px_40px_rgba(0,0,0,0.5)] bg-black/40'}
+          ${isPlaying ? 'shadow-[0_20px_40px_rgba(245,158,11,0.15)] ring-1 ring-cyan-500/30' : 'shadow-[0_20px_40px_rgba(0,0,0,0.5)] bg-black/40'}
           backdrop-blur-3xl bg-black/60
         `}
         style={{ height: 'clamp(64px, 10vw, 88px)' }}
@@ -1058,7 +1047,7 @@ const App: React.FC = () => {
         >
           <div className="w-full h-1 group-hover:h-2 bg-white/10 rounded-full overflow-hidden relative transition-all duration-300">
             <div
-              className="absolute top-0 right-0 h-full bg-gradient-to-l from-cyan-400 to-purple-500 shadow-[0_0_10px_#00f2ff] transition-all duration-200"
+              className="absolute top-0 right-0 h-full bg-gradient-to-l from-cyan-400 to-purple-500 shadow-[0_0_10px_#fbbf24] transition-all duration-200"
               style={{ width: `${progress}%` }}
             />
           </div>
@@ -1481,10 +1470,10 @@ const App: React.FC = () => {
 const SidebarBtn: React.FC<{ active: boolean; onClick: () => void; icon: React.ReactNode; label: string }> = ({ active, onClick, icon, label }) => (
   <button
     onClick={onClick}
-    className={`w-full flex items-center gap-4 px-6 py-4 rounded-2xl transition-all duration-500 group relative overflow-hidden ${active ? 'bg-gradient-to-r from-cyan-500/20 to-transparent text-cyan-400 border-r-4 border-cyan-400 shadow-[10px_0_30px_rgba(6,182,212,0.15)]' : 'text-white/40 hover:bg-white/10 hover:text-white'}`}
+    className={`w-full flex items-center gap-4 px-6 py-4 rounded-2xl transition-all duration-500 group relative overflow-hidden ${active ? 'bg-gradient-to-r from-cyan-500/20 to-transparent text-cyan-400 border-r-4 border-cyan-400 shadow-[10px_0_30px_rgba(245,158,11,0.15)]' : 'text-white/40 hover:bg-white/10 hover:text-white'}`}
   >
     {active && <div className="absolute inset-0 bg-cyan-400/5 blur-xl"></div>}
-    <span className={`relative z-10 transition-transform duration-500 ${active ? 'scale-110 drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]' : 'group-hover:scale-110'}`}>{icon}</span>
+    <span className={`relative z-10 transition-transform duration-500 ${active ? 'scale-110 drop-shadow-[0_0_8px_rgba(245,158,11,0.8)]' : 'group-hover:scale-110'}`}>{icon}</span>
     <span className={`relative z-10 font-bold tracking-wide ${active ? 'text-white' : ''}`}>{label}</span>
   </button>
 );
@@ -1494,7 +1483,7 @@ const MobNavBtn: React.FC<{ active: boolean; onClick: () => void; icon: React.Re
     onClick={onClick}
     className={`flex flex-col items-center gap-1.5 transition-all duration-500 flex-1 relative ${active ? 'text-cyan-400 -translate-y-4' : 'text-white/30 hover:text-white/60'}`}
   >
-    <div className={`p-3 rounded-2xl transition-all duration-500 flex items-center justify-center ${active ? 'bg-gradient-to-br from-cyan-500 to-blue-600 shadow-[0_10px_20px_rgba(6,182,212,0.3)] text-black scale-110' : ''}`}>
+    <div className={`p-3 rounded-2xl transition-all duration-500 flex items-center justify-center ${active ? 'bg-gradient-to-br from-cyan-500 to-blue-600 shadow-[0_10px_20px_rgba(245,158,11,0.3)] text-black scale-110' : ''}`}>
       {icon}
     </div>
     <span className={`text-[10px] font-black uppercase tracking-widest absolute -bottom-5 transition-all duration-500 ${active ? 'opacity-100 translate-y-0 text-cyan-400' : 'opacity-0 translate-y-2'}`}>{label}</span>
