@@ -3,8 +3,9 @@ export default {
   content: [
     "./index.html",
     "./App.tsx",
-    "./*.tsx",
-    "./**/*.{ts,tsx}"
+    "./index.tsx",
+    "./types.ts",
+    "./firebase.ts"
   ],
   theme: {
     extend: {
