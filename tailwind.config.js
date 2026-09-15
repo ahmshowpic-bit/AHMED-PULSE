@@ -7,7 +7,14 @@ export default {
     "./**/*.{ts,tsx}"
   ],
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        // الربط الذكي للألوان التلقائية (Light/Dark Mode)
+        // هذا يمنع أي تضارب مع أكوادك الحالية في App.tsx
+        black: 'rgb(var(--theme-base-black) / <alpha-value>)',
+        white: 'rgb(var(--theme-base-white) / <alpha-value>)',
+      }
+    },
   },
   plugins: [],
 }
