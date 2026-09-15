@@ -1,0 +1,48 @@
+{
+  "rules": {
+    "settings": {
+      ".read": true,
+      ".write": "auth != null && auth.token.email === 'ahmshowpic@gmail.com'",
+      "visitorCount": {
+        ".write": true,
+        ".validate": "newData.isNumber() && ((auth != null && auth.token.email === 'ahmshowpic@gmail.com') || newData.val() === (data.exists() ? data.val() + 1 : 1))"
+      }
+    },
+
+    "music": {
+      ".read": true,
+      ".write": "auth != null && auth.token.email === 'ahmshowpic@gmail.com'",
+      "$songId": {
+        ".validate": "newData.hasChildren(['name','url','folder']) && newData.child('name').val().length <= 100 && newData.child('folder').val().length <= 50"
+      }
+    },
+
+    "diaries": {
+      ".read": true,
+      "$postId": {
+        ".write": "!data.exists() || (auth != null && auth.token.email === 'ahmshowpic@gmail.com')",
+        ".validate": "newData.hasChildren(['name','text','date']) && newData.child('name').val().length <= 50 && newData.child('text').val().length <= 1000 && newData.child('verified').val() === (auth != null && auth.token.email === 'ahmshowpic@gmail.com')",
+        "likes": {
+          ".write": true,
+          ".validate": "newData.isNumber() && newData.val() === (data.exists() ? data.val() + 1 : 0)"
+        }
+      }
+    },
+
+    "custom_pages": {
+      ".read": true,
+      ".write": "auth != null && auth.token.email === 'ahmshowpic@gmail.com'",
+      "$pageId": {
+        ".validate": "newData.hasChildren(['title','content'])"
+      }
+    },
+
+    "inbox": {
+      ".read": "auth != null && auth.token.email === 'ahmshowpic@gmail.com'",
+      "$msgId": {
+        ".write": "!data.exists() || (auth != null && auth.token.email === 'ahmshowpic@gmail.com')",
+        ".validate": "newData.hasChildren(['name','msg']) && newData.child('name').val().length <= 50 && newData.child('msg').val().length <= 500"
+      }
+    }
+  }
+}
