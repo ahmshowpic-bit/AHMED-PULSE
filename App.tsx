@@ -54,6 +54,24 @@ const VisitorBadge: React.FC<{ count: number; visible: boolean }> = ({ count, vi
   );
 };
 
+// شارة اتصال صغيرة جنب الشعار بدل الشريط الكامل
+const ConnectionBadge: React.FC<{ status: 'offline' | 'online' | null }> = ({ status }) => {
+  if (!status) return null;
+  const isOffline = status === 'offline';
+  return (
+    <div
+      title={isOffline ? 'لا يوجد اتصال بالإنترنت' : 'تم الاتصال بالإنترنت'}
+      className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 transition-colors ${isOffline ? 'bg-red-500/15' : 'bg-emerald-500/15'}`}
+    >
+      {isOffline ? (
+        <WifiOff size={12} className="text-red-400" />
+      ) : (
+        <CheckCircle size={12} className="text-emerald-400" />
+      )}
+    </div>
+  );
+};
+
 // حجم الدفعة الواحدة عند التحميل (توفير باقة الزائر)
 const PAGE_SIZE = 20;
 
@@ -533,21 +551,6 @@ const App: React.FC = () => {
 
   return (
     <div className="relative h-[100dvh] w-screen max-w-[100vw] flex overflow-hidden">
-      {/* رسالة قطع الاتصال */}
-      {isOffline && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] bg-red-600/90 backdrop-blur-md text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg flex items-center gap-2 animate-fade-in-up">
-          <WifiOff size={14} className="animate-pulse" />
-          <span>لا يوجد اتصال بالإنترنت</span>
-        </div>
-      )}
-
-      {/* رسالة عودة الاتصال */}
-      {showOnlineMsg && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] bg-emerald-500/90 backdrop-blur-md text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg flex items-center gap-2 animate-fade-in-up">
-          <CheckCircle size={14} />
-          <span>تم الاتصال بالإنترنت</span>
-        </div>
-      )}
       {/* Style for dynamic animations */}
       <style>
         {`
@@ -603,7 +606,8 @@ const App: React.FC = () => {
           <Zap className="text-cyan-400" size={24} />
           AHMED PULSE
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
+          <ConnectionBadge status={isOffline ? 'offline' : (showOnlineMsg ? 'online' : null)} />
           {/* Download Button */}
           {deferredPrompt && (
             <button
@@ -634,6 +638,7 @@ const App: React.FC = () => {
           <h1 className="text-3xl font-black bg-gradient-to-br from-white via-cyan-100 to-cyan-400 bg-clip-text text-transparent tracking-tighter hover:scale-105 origin-left transition-transform drop-shadow-md">
             PULSE
           </h1>
+          <ConnectionBadge status={isOffline ? 'offline' : (showOnlineMsg ? 'online' : null)} />
         </div>
 
         <div className="mb-8">
