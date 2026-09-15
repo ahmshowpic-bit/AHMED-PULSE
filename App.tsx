@@ -63,6 +63,11 @@ const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [showAdminModal, setShowAdminModal] = useState(false);
+  // مسودة منفصلة للإعدادات: الكتابة هنا متأثرش على خلفية الموقع الحية إلا بعد الحفظ
+  const [draftSettings, setDraftSettings] = useState<AppSettings>(settings);
+  useEffect(() => {
+    if (showAdminModal) setDraftSettings(settings);
+  }, [showAdminModal]);
   const [adminTab, setAdminTab] = useState('inbox');
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
@@ -577,7 +582,7 @@ const App: React.FC = () => {
           src={settings.heroImg}
         />
       )}
-      <div className="absolute inset-0 z-[1] bg-gradient-to-t from-[#1a0f05]/90 via-transparent to-black/20 pointer-events-none" />
+      <div className="absolute inset-0 z-[1] bg-gradient-to-t from-[#3d2410]/85 via-[#1a0f05]/20 to-black/10 pointer-events-none" />
 
       {/* --- Mobile Header --- */}
       <header className="md:hidden fixed top-0 left-0 right-0 z-50 grid grid-cols-3 items-center px-6 py-4 bg-black/40 backdrop-blur-2xl border-b border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
@@ -1311,8 +1316,8 @@ const App: React.FC = () => {
                       <div className="space-y-3">
                         <label className="block text-sm font-black text-cyan-400 mr-2">نص الترحيب الرئيسي</label>
                         <input
-                          value={settings.welcome}
-                          onChange={e => setSettings({ ...settings, welcome: e.target.value })}
+                          value={draftSettings.welcome}
+                          onChange={e => setDraftSettings({ ...draftSettings, welcome: e.target.value })}
                           className="w-full bg-black/60 border border-white/10 p-5 rounded-2xl text-xl font-black text-center"
                         />
                       </div>
@@ -1329,8 +1334,8 @@ const App: React.FC = () => {
                           <input
                             type="checkbox"
                             className="sr-only peer"
-                            checked={settings.showVisitorCount}
-                            onChange={e => setSettings({ ...settings, showVisitorCount: e.target.checked })}
+                            checked={draftSettings.showVisitorCount}
+                            onChange={e => setDraftSettings({ ...draftSettings, showVisitorCount: e.target.checked })}
                           />
                           <div className="w-14 h-7 bg-white/10 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-1 after:left-1 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500"></div>
                         </label>
@@ -1349,8 +1354,8 @@ const App: React.FC = () => {
                             <input
                               type="checkbox"
                               className="sr-only peer"
-                              checked={settings.heroMode}
-                              onChange={e => setSettings({ ...settings, heroMode: e.target.checked })}
+                              checked={draftSettings.heroMode}
+                              onChange={e => setDraftSettings({ ...draftSettings, heroMode: e.target.checked })}
                             />
                             <div className="w-14 h-7 bg-white/10 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-1 after:left-1 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
                           </label>
@@ -1359,8 +1364,8 @@ const App: React.FC = () => {
                         <div className="space-y-3">
                           <label className="text-xs font-black text-white/40 mr-2">رابط الوسائط (صورة/فيديو)</label>
                           <input
-                            value={settings.heroImg}
-                            onChange={e => setSettings({ ...settings, heroImg: e.target.value })}
+                            value={draftSettings.heroImg}
+                            onChange={e => setDraftSettings({ ...draftSettings, heroImg: e.target.value })}
                             placeholder="ضع الرابط هنا"
                             className="w-full bg-black/60 border border-white/10 p-5 rounded-2xl text-lg font-mono"
                           />
@@ -1370,8 +1375,8 @@ const App: React.FC = () => {
                           <div className="space-y-2">
                             <label className="text-xs font-black text-white/40 mr-2">نوع الوسائط</label>
                             <select
-                              value={settings.heroType}
-                              onChange={e => setSettings({ ...settings, heroType: e.target.value as any })}
+                              value={draftSettings.heroType}
+                              onChange={e => setDraftSettings({ ...draftSettings, heroType: e.target.value as any })}
                               className="w-full bg-black/60 border border-white/10 p-4 rounded-2xl font-bold"
                             >
                               <option value="image">صورة احترافية</option>
@@ -1381,8 +1386,8 @@ const App: React.FC = () => {
                           <div className="space-y-2">
                             <label className="text-xs font-black text-white/40 mr-2">نمط الملاءمة</label>
                             <select
-                              value={settings.bgFit}
-                              onChange={e => setSettings({ ...settings, bgFit: e.target.value as any })}
+                              value={draftSettings.bgFit}
+                              onChange={e => setDraftSettings({ ...draftSettings, bgFit: e.target.value as any })}
                               className="w-full bg-black/60 border border-white/10 p-4 rounded-2xl font-bold"
                             >
                               <option value="cover">ملء كامل (Cover)</option>
@@ -1393,7 +1398,12 @@ const App: React.FC = () => {
                       </div>
 
                       <button
-                        onClick={() => { update(ref(db, 'settings'), settings).then(() => alert("تم تحديث كافة الإعدادات بنجاح")).catch(e => alert("فشل الحفظ: " + e.message)); }}
+                        onClick={() => {
+                          const payload = { ...draftSettings, visitorCount: settings.visitorCount };
+                          update(ref(db, 'settings'), payload)
+                            .then(() => { setSettings(payload); alert("تم تحديث كافة الإعدادات بنجاح"); })
+                            .catch(e => alert("فشل الحفظ: " + e.message));
+                        }}
                         className="w-full py-6 bg-gradient-to-r from-cyan-600 to-purple-600 rounded-[2rem] font-black text-2xl shadow-2xl shadow-cyan-600/30 hover:scale-[1.01] active:scale-95 transition-all"
                       >
                         حفظ التعديلات
