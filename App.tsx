@@ -24,8 +24,8 @@ import {
   Sparkles,
   Zap,
   Download,
-  ChevronDown, // أيقونة إغلاق المشغل الموسع
-  Maximize2, // أيقونة التوسيع
+  ChevronDown,
+  Maximize2,
   WifiOff
 } from 'lucide-react';
 import {
@@ -35,9 +35,6 @@ import {
   signInWithPopup, signOut, onAuthStateChanged, User
 } from './firebase';
 import { Song, DiaryPost, ContactMessage, CustomPage, AppSettings, TabId } from './types';
-
-let __pulseDbgRender = 0;
-let __pulseDbgTimeUpdates = 0;
 
 // Components defined outside for better performance
 const VisitorBadge: React.FC<{ count: number; visible: boolean }> = ({ count, visible }) => {
@@ -112,12 +109,6 @@ const ProgressTrack: React.FC<{
       cancelAnimationFrame(raf);
       raf = requestAnimationFrame(() => {
         if (!el.duration) return;
-        __pulseDbgTimeUpdates++;
-        // #region agent log
-        if (__pulseDbgTimeUpdates % 8 === 0) {
-          fetch('http://127.0.0.1:7665/ingest/2b9de6b4-2c41-4017-9854-e675da82e0a5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'99e108'},body:JSON.stringify({sessionId:'99e108',runId:'post-fix',hypothesisId:'C',location:'App.tsx:ProgressTrack',message:'progress isolated',data:{n:__pulseDbgTimeUpdates,progressPct:Math.round((el.currentTime/el.duration)*100)},timestamp:Date.now()})}).catch(()=>{});
-        }
-        // #endregion
         setProgress((el.currentTime / el.duration) * 100);
       });
     };
@@ -146,12 +137,7 @@ const DiaryComposer: React.FC<{ onPublish: (name: string, text: string) => void 
         <div className="grid md:grid-cols-2 gap-4 mb-4">
           <input
             value={name}
-            onChange={e => {
-              // #region agent log
-              fetch('http://127.0.0.1:7665/ingest/2b9de6b4-2c41-4017-9854-e675da82e0a5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'99e108'},body:JSON.stringify({sessionId:'99e108',runId:'post-fix',hypothesisId:'A',location:'App.tsx:diaryName',message:'diary name keystroke',data:{len:e.target.value.length,appRenders:__pulseDbgRender},timestamp:Date.now()})}).catch(()=>{});
-              // #endregion
-              setName(e.target.value);
-            }}
+            onChange={e => setName(e.target.value)}
             placeholder="اسمك المستعار"
             className="bg-black/40 border border-white/10 p-5 rounded-2xl text-white placeholder:text-white/20 font-bold"
             maxLength={20}
@@ -163,12 +149,7 @@ const DiaryComposer: React.FC<{ onPublish: (name: string, text: string) => void 
         </div>
         <textarea
           value={msg}
-          onChange={e => {
-            // #region agent log
-            fetch('http://127.0.0.1:7665/ingest/2b9de6b4-2c41-4017-9854-e675da82e0a5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'99e108'},body:JSON.stringify({sessionId:'99e108',runId:'post-fix',hypothesisId:'A',location:'App.tsx:diaryMsg',message:'diary text keystroke',data:{len:e.target.value.length,appRenders:__pulseDbgRender},timestamp:Date.now()})}).catch(()=>{});
-            // #endregion
-            setMsg(e.target.value);
-          }}
+          onChange={e => setMsg(e.target.value)}
           placeholder="ما الذي يدور في ذهنك اليوم؟"
           rows={4}
           className="w-full bg-black/40 border border-white/10 p-6 rounded-[2rem] mb-6 text-white placeholder:text-white/20 resize-none text-lg leading-relaxed"
@@ -207,12 +188,7 @@ const ContactFields: React.FC<{ onSend: (name: string, text: string) => void }> 
         <label className="text-sm font-black text-cyan-400 block mb-3 mr-4 uppercase tracking-wider">محتوى الرسالة</label>
         <textarea
           value={msg}
-          onChange={e => {
-            // #region agent log
-            fetch('http://127.0.0.1:7665/ingest/2b9de6b4-2c41-4017-9854-e675da82e0a5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'99e108'},body:JSON.stringify({sessionId:'99e108',runId:'post-fix',hypothesisId:'A',location:'App.tsx:contactMsg',message:'contact text keystroke',data:{len:e.target.value.length,appRenders:__pulseDbgRender},timestamp:Date.now()})}).catch(()=>{});
-            // #endregion
-            setMsg(e.target.value);
-          }}
+          onChange={e => setMsg(e.target.value)}
           placeholder="بماذا تود أن تخبرني؟"
           rows={6}
           className="w-full bg-black/40 border border-white/10 p-6 rounded-[2.5rem] text-white resize-none text-center text-xl focus:ring-2 ring-cyan-500/50 outline-none transition-all group-hover:border-white/20 shadow-inner"
@@ -233,7 +209,6 @@ const ContactFields: React.FC<{ onSend: (name: string, text: string) => void }> 
   );
 };
 
-// حجم الدفعة الواحدة عند التحميل (توفير باقة الزائر)
 const IsolatedInput: React.FC<React.InputHTMLAttributes<HTMLInputElement> & { onValue: (v: string) => void }> = ({ value, onValue, ...rest }) => {
   const [local, setLocal] = useState(String(value ?? ''));
   useEffect(() => { setLocal(String(value ?? '')); }, [value]);
@@ -241,16 +216,51 @@ const IsolatedInput: React.FC<React.InputHTMLAttributes<HTMLInputElement> & { on
     <input
       {...rest}
       value={local}
-      onChange={e => {
-        setLocal(e.target.value);
-        // #region agent log
-        fetch('http://127.0.0.1:7665/ingest/2b9de6b4-2c41-4017-9854-e675da82e0a5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'99e108'},body:JSON.stringify({sessionId:'99e108',runId:'post-fix',hypothesisId:'F',location:'App.tsx:IsolatedInput',message:'isolated admin keystroke',data:{len:e.target.value.length,appRenders:__pulseDbgRender},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
-      }}
+      onChange={e => setLocal(e.target.value)}
       onBlur={() => { if (local !== value) onValue(local); }}
     />
   );
 };
+
+const SidebarBtn: React.FC<{ active: boolean; onClick: () => void; icon: React.ReactNode; label: string }> = ({ active, onClick, icon, label }) => (
+  <button
+    onClick={onClick}
+    className={`w-full flex items-center gap-4 px-6 py-4 rounded-2xl font-black text-lg transition-all duration-300 ${
+      active
+        ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 shadow-[0_0_20px_rgba(6,182,212,0.15)] translate-x-1'
+        : 'text-white/60 hover:text-white hover:bg-white/5'
+    }`}
+  >
+    {React.cloneElement(icon as React.ReactElement, { size: 22 })}
+    <span>{label}</span>
+  </button>
+);
+
+const MobNavBtn: React.FC<{ active: boolean; onClick: () => void; icon: React.ReactNode; label: string }> = ({ active, onClick, icon, label }) => (
+  <button
+    onClick={onClick}
+    className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition-all ${
+      active ? 'text-cyan-400 scale-105 font-black' : 'text-white/50 hover:text-white'
+    }`}
+  >
+    {icon}
+    <span className="text-[10px]">{label}</span>
+  </button>
+);
+
+const AdminNavBtn: React.FC<{ active: boolean; onClick: () => void; icon: React.ReactNode; label: string }> = ({ active, onClick, icon, label }) => (
+  <button
+    onClick={onClick}
+    className={`w-full flex items-center gap-3 p-4 rounded-2xl font-black text-sm md:text-base transition-all ${
+      active
+        ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 shadow-lg'
+        : 'text-white/50 hover:text-white hover:bg-white/5'
+    }`}
+  >
+    {React.cloneElement(icon as React.ReactElement, { size: 20 })}
+    <span className="hidden md:inline">{label}</span>
+  </button>
+);
 
 const PAGE_SIZE = 20;
 
@@ -282,7 +292,6 @@ const App: React.FC = () => {
     defaultSongId: ""
   });
   const [songs, setSongs] = useState<Song[]>([]);
-  // مسودة منفصلة للإعدادات: الكتابة هنا متأثرش على خلفية الموقع الحية إلا بعد الحفظ
   const [draftSettings, setDraftSettings] = useState<AppSettings>(settings);
   useEffect(() => {
     if (showAdminModal) setDraftSettings(settings);
@@ -306,21 +315,15 @@ const App: React.FC = () => {
   const [selectedFolder, setSelectedFolder] = useState('new');
   const [newFolderName, setNewFolderName] = useState('');
 
-  // Pagination State (توفير بيانات الزائر)
+  // Pagination State
   const [hasMoreSongs, setHasMoreSongs] = useState(false);
   const [hasMoreDiaries, setHasMoreDiaries] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
 
-  useEffect(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7665/ingest/2b9de6b4-2c41-4017-9854-e675da82e0a5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'99e108'},body:JSON.stringify({sessionId:'99e108',runId:'post-fix',hypothesisId:'F',location:'App.tsx:mount',message:'viewport gpu context',data:{w:window.innerWidth,h:window.innerHeight,dpr:window.devicePixelRatio,isPc:window.innerWidth>=768},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
-  }, []);
-
-  // Calculate Hero Song (The default song selected by admin)
+  // Calculate Hero Song
   const heroSong = useMemo(() => songs.find(s => s.id === settings.defaultSongId), [songs, settings.defaultSongId]);
 
-  // تحميل دفعة أقدم من الأغاني عند الطلب فقط
+  // تحميل دفعة أقدم من الأغاني عند الطلب
   const loadMoreSongs = async () => {
     if (loadingMore || songs.length === 0) return;
     setLoadingMore(true);
@@ -338,7 +341,7 @@ const App: React.FC = () => {
     setLoadingMore(false);
   };
 
-  // تحميل دفعة أقدم من اليوميات عند الطلب فقط
+  // تحميل دفعة أقدم من اليوميات عند الطلب
   const loadMoreDiaries = async () => {
     if (loadingMore || diaries.length === 0) return;
     setLoadingMore(true);
@@ -362,7 +365,7 @@ const App: React.FC = () => {
     const goOnline = () => {
       setIsOffline(false);
       setShowOnlineMsg(true);
-      setTimeout(() => setShowOnlineMsg(false), 2000); // إخفاء بعد ثانيتين
+      setTimeout(() => setShowOnlineMsg(false), 2000);
     };
     window.addEventListener('offline', goOffline);
     window.addEventListener('online', goOnline);
@@ -391,7 +394,7 @@ const App: React.FC = () => {
         } catch (e) {
           console.warn("Error syncing offline queues:", e);
         }
-      }, 3000); // Give Firebase a moment to reconnect
+      }, 3000);
     }
   }, [isOffline]);
 
@@ -410,12 +413,10 @@ const App: React.FC = () => {
     if (outcome === 'accepted') {
       setDeferredPrompt(null);
     }
-
   };
 
   // Firebase Listeners
   useEffect(() => {
-    // --- LOAD FROM LOCAL CACHE FIRST FOR OFFLINE SUPPORT ---
     try {
       const cachedSettings = localStorage.getItem('pulse_settings');
       if (cachedSettings) setSettings(prev => ({ ...prev, ...JSON.parse(cachedSettings) }));
@@ -454,7 +455,6 @@ const App: React.FC = () => {
       sessionStorage.setItem('visited', 'true');
     }
 
-    // تحميل آخر PAGE_SIZE أغنية فقط بدلاً من المكتبة كاملة
     const unsubMusic = onValue(query(ref(db, 'music'), orderByKey(), limitToLast(PAGE_SIZE)), (snap) => {
       const data: Song[] = [];
       snap.forEach((child) => {
@@ -465,7 +465,6 @@ const App: React.FC = () => {
       localStorage.setItem('pulse_music', JSON.stringify(data));
     }, (error) => console.warn("Music access restricted:", error.message));
 
-    // تحميل آخر PAGE_SIZE يومية فقط، والباقي عند الطلب
     const unsubDiaries = onValue(query(ref(db, 'diaries'), orderByKey(), limitToLast(PAGE_SIZE)), (snap) => {
       const data: DiaryPost[] = [];
       snap.forEach((child) => {
@@ -477,7 +476,6 @@ const App: React.FC = () => {
       localStorage.setItem('pulse_diaries', JSON.stringify(reversed));
     }, (error) => console.warn("Diaries access restricted:", error.message));
 
-    // الصفحات المخصصة تُقرأ مرة واحدة فقط (بدون اتصال دائم)
     get(ref(db, 'custom_pages')).then((snap) => {
       const data: CustomPage[] = [];
       snap.forEach((child) => {
@@ -495,7 +493,7 @@ const App: React.FC = () => {
     };
   }, []);
 
-  // البريد الوارد يُحمَّل فقط عند دخول الأدمن (الزائر لا يحمّله إطلاقاً)
+  // البريد الوارد يُحمَّل فقط عند دخول الأدمن
   useEffect(() => {
     if (!isAdmin) {
       setMessages([]);
@@ -528,7 +526,7 @@ const App: React.FC = () => {
   }, [volume]);
 
   const togglePlay = (e?: React.MouseEvent) => {
-    if (e) e.stopPropagation(); // Prevent opening expand player
+    if (e) e.stopPropagation();
     if (!audioRef.current) return;
     if (isPlaying) {
       audioRef.current.pause();
@@ -550,7 +548,7 @@ const App: React.FC = () => {
     audioRef.current.play().then(() => setIsPlaying(true)).catch(console.error);
   };
 
-  // Media Session API - Lock Screen Integration
+  // Media Session API
   useEffect(() => {
     if (!currentSong || !('mediaSession' in navigator)) return;
 
@@ -645,7 +643,6 @@ const App: React.FC = () => {
       const queue = JSON.parse(localStorage.getItem('offline_diaries_queue') || '[]');
       queue.push(postData);
       localStorage.setItem('offline_diaries_queue', JSON.stringify(queue));
-      // Optimistic UI update
       setDiaries([{ id: 'offline-' + Date.now(), ...postData }, ...diaries]);
       return;
     }
@@ -716,15 +713,6 @@ const App: React.FC = () => {
     };
   }, [settings, currentSong, heroSong]);
 
-  // #region agent log
-  __pulseDbgRender++;
-  const __renderStart = performance.now();
-  fetch('http://127.0.0.1:7665/ingest/2b9de6b4-2c41-4017-9854-e675da82e0a5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'99e108'},body:JSON.stringify({sessionId:'99e108',runId:'post-fix',hypothesisId:'A',location:'App.tsx:render',message:'full App re-render',data:{n:__pulseDbgRender,activeTab,isPlaying,heroType:settings.heroType,animType:settings.animType,bgFilter:settings.bgFilter,songs:songs.length,diaries:diaries.length,playerExpanded:isPlayerExpanded},timestamp:Date.now()})}).catch(()=>{});
-  useLayoutEffect(() => {
-    fetch('http://127.0.0.1:7665/ingest/2b9de6b4-2c41-4017-9854-e675da82e0a5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'99e108'},body:JSON.stringify({sessionId:'99e108',runId:'post-fix',hypothesisId:'B',location:'App.tsx:commit',message:'commit after tree',data:{ms:Math.round((performance.now()-__renderStart)*100)/100,n:__pulseDbgRender,animZoom:settings.animType==='zoom-in',bgFilter:settings.bgFilter,activeTab},timestamp:Date.now()})}).catch(()=>{});
-  });
-  // #endregion
-
   return (
     <div className="relative h-[100dvh] w-screen max-w-[100vw] flex overflow-hidden">
       <HeroBackground
@@ -736,6 +724,9 @@ const App: React.FC = () => {
         videoSrc={settings.heroImg}
       />
       <div className="absolute inset-0 z-[1] bg-gradient-to-t from-[#3d2410]/85 via-[#1a0f05]/20 to-black/10 pointer-events-none" />
+
+      {/* audio element hidden */}
+      <audio ref={audioRef} onEnded={() => nextSong()} className="hidden" />
 
       {/* --- Mobile Header --- */}
       <header className="md:hidden fixed top-0 left-0 right-0 z-50 grid grid-cols-3 items-center px-6 py-4 bg-black/80 border-b border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
@@ -752,7 +743,6 @@ const App: React.FC = () => {
           AHMED PULSE
         </div>
         <div className="justify-self-end flex items-center gap-3">
-          {/* Download Button */}
           {deferredPrompt && (
             <button
               onClick={handleInstallClick}
@@ -772,7 +762,6 @@ const App: React.FC = () => {
 
       {/* Sidebar - Desktop */}
       <aside className="hidden md:flex w-[280px] bg-[#0a0a10]/95 border-l border-white/5 z-50 flex-col p-8 transition-all shadow-[-20px_0_40px_rgba(0,0,0,0.5)] relative">
-        {/* Glow effect */}
         <div className="absolute top-0 left-0 right-0 h-32 bg-cyan-500/10 blur-[50px] pointer-events-none" />
 
         <div className="mb-12 cursor-pointer relative z-10 flex items-center gap-3" onClick={() => setActiveTab('home')}>
@@ -834,7 +823,7 @@ const App: React.FC = () => {
               </h2>
 
               {heroSong && (
-                <div className="animate-fade-in-up flex flex-col items-center gap-8 relative z-20" style={{ animationDelay: '0.2s' }}>
+                <div className="animate-fade-in-up flex flex-col items-center gap-8 relative z-20">
                   <div className="relative group cursor-pointer" onClick={() => playSong(heroSong, [heroSong])}>
                     <div className="absolute -inset-4 bg-gradient-to-r from-cyan-400 to-purple-600 rounded-full blur-2xl opacity-20 group-hover:opacity-40 group-hover:rotate-45 transition-all duration-1000"></div>
                     <img
@@ -1097,7 +1086,6 @@ const App: React.FC = () => {
           {activeTab === 'contact' && (
           <section className="animate-fade-in-up">
             <div className="max-w-3xl mx-auto bg-black/50 backdrop-blur-md border border-white/10 p-8 md:p-16 rounded-[4rem] text-center shadow-[0_20px_60px_rgba(0,0,0,0.8)] mt-12 relative overflow-hidden">
-              {/* Background Glows */}
               <div className="absolute top-0 left-0 w-40 h-40 bg-cyan-500/20 blur-[40px] rounded-full pointer-events-none" />
               <div className="absolute bottom-0 right-0 w-40 h-40 bg-purple-500/10 blur-[40px] rounded-full pointer-events-none" />
 
@@ -1109,7 +1097,6 @@ const App: React.FC = () => {
 
               <ContactFields onSend={sendMessage} />
 
-              {/* Hidden Admin Trigger (PRESERVED EXACTLY FOR SECURITY) */}
               <div className="mt-20 opacity-[0.02] hover:opacity-100 transition-opacity duration-1000 relative z-20">
                 <button
                   onClick={() => isAdmin ? setShowAdminModal(true) : handleLogin()}
@@ -1222,7 +1209,7 @@ const App: React.FC = () => {
             <div className="text-[10px] md:text-xs font-black tracking-[0.3em] text-white/40 uppercase">Playing From</div>
             <div className="text-sm md:text-base font-bold text-cyan-400 tracking-widest">{currentSong?.folder || "LIBRARY"}</div>
           </div>
-          <button className="w-14 h-14" /> {/* Spacer */}
+          <button className="w-14 h-14" />
         </div>
 
         {/* Main Content */}
@@ -1272,11 +1259,13 @@ const App: React.FC = () => {
         </div>
       </div>
       )}
+
+      {/* Mobile Bottom Navigation */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 h-[88px] pb-4 pt-2 border-t border-white/10 z-[150] flex items-center justify-around px-2 shadow-[0_-10px_30px_rgba(0,0,0,0.8)] bg-black/80 backdrop-blur-md">
         <MobNavBtn active={activeTab === 'home'} onClick={() => setActiveTab('home')} icon={<Home size={22} />} label="الرئيسية" />
         <MobNavBtn active={activeTab === 'music'} onClick={() => setActiveTab('music')} icon={<MusicIcon size={22} />} label="موسيقى" />
-        <MobNavBtn active={activeTab === 'diaries'} onClick={() => setActiveTab('diaries')} icon={<Users />} label="المجتمع" />
-        <MobNavBtn active={activeTab === 'contact'} onClick={() => setActiveTab('contact')} icon={<Mail />} label="اتصل" />
+        <MobNavBtn active={activeTab === 'diaries'} onClick={() => setActiveTab('diaries')} icon={<Users size={22} />} label="المجتمع" />
+        <MobNavBtn active={activeTab === 'contact'} onClick={() => setActiveTab('contact')} icon={<Mail size={22} />} label="اتصل" />
       </nav>
 
       {/* Admin Modal */}
@@ -1296,7 +1285,6 @@ const App: React.FC = () => {
               <div className="w-24 md:w-60 bg-black/60 border-l border-white/5 flex flex-col p-4 gap-3">
                 <AdminNavBtn active={adminTab === 'inbox'} onClick={() => setAdminTab('inbox')} icon={<Mail />} label="البريد الوارد" />
                 <AdminNavBtn active={adminTab === 'music'} onClick={() => setAdminTab('music')} icon={<MusicIcon />} label="إدارة الأغاني" />
-                <AdminNavBtn active={adminTab === 'pages'} onClick={() => setAdminTab('pages')} icon={<Settings />} label="بناء الصفحات" />
                 <AdminNavBtn active={adminTab === 'settings'} onClick={() => setAdminTab('settings')} icon={<Settings />} label="إعدادات النظام" />
                 <button
                   onClick={() => { signOut(auth); setShowAdminModal(false); }}
@@ -1341,7 +1329,7 @@ const App: React.FC = () => {
                           <select
                             value={selectedFolder}
                             onChange={e => setSelectedFolder(e.target.value)}
-                            className="w-full bg-black/60 border border-white/10 p-4 rounded-2xl text-lg font-bold"
+                            className="w-full bg-black/60 border border-white/10 p-4 rounded-2xl text-lg font-bold text-white"
                           >
                             <option value="new">++ إنشاء مجلد جديد ++</option>
                             {Object.keys(folders).map(f => <option key={f} value={f}>{f}</option>)}
@@ -1354,7 +1342,7 @@ const App: React.FC = () => {
                               value={newFolderName}
                               onValue={setNewFolderName}
                               placeholder="أدخل اسماً للمجلد"
-                              className="w-full bg-black/60 border border-white/10 p-4 rounded-2xl text-lg"
+                              className="w-full bg-black/60 border border-white/10 p-4 rounded-2xl text-lg text-white"
                             />
                           </div>
                         )}
@@ -1363,26 +1351,26 @@ const App: React.FC = () => {
                       <div className="grid md:grid-cols-2 gap-6">
                         <div className="space-y-2">
                           <label className="text-xs font-black text-white/40 mr-2">اسم الأغنية</label>
-                          <IsolatedInput value={newSongTitle} onValue={setNewSongTitle} placeholder="مثال: لحن الخلود" className="w-full bg-black/60 border border-white/10 p-4 rounded-2xl text-lg" />
+                          <IsolatedInput value={newSongTitle} onValue={setNewSongTitle} placeholder="مثال: لحن الخلود" className="w-full bg-black/60 border border-white/10 p-4 rounded-2xl text-lg text-white" />
                         </div>
                         <div className="space-y-2">
                           <label className="text-xs font-black text-white/40 mr-2">رابط ملف MP3</label>
-                          <IsolatedInput value={newSongUrl} onValue={setNewSongUrl} placeholder="https://..." className="w-full bg-black/60 border border-white/10 p-4 rounded-2xl text-lg font-mono" />
+                          <IsolatedInput value={newSongUrl} onValue={setNewSongUrl} placeholder="https://..." className="w-full bg-black/60 border border-white/10 p-4 rounded-2xl text-lg font-mono text-white" />
                         </div>
                       </div>
                       <div className="space-y-2">
                         <label className="text-xs font-black text-white/40 mr-2">رابط صورة الغلاف</label>
-                        <IsolatedInput value={newSongImg} onValue={setNewSongImg} placeholder="https://..." className="w-full bg-black/60 border border-white/10 p-4 rounded-2xl text-lg font-mono" />
+                        <IsolatedInput value={newSongImg} onValue={setNewSongImg} placeholder="https://..." className="w-full bg-black/60 border border-white/10 p-4 rounded-2xl text-lg font-mono text-white" />
                       </div>
-                      <button onClick={addMusicAdmin} className="w-full py-5 bg-cyan-600 rounded-[2rem] font-black text-xl shadow-2xl shadow-cyan-600/20 hover:scale-[1.02] active:scale-95 transition-all">إضافة الملف الآن</button>
+                      <button onClick={addMusicAdmin} className="w-full py-5 bg-cyan-600 rounded-[2rem] font-black text-xl shadow-2xl shadow-cyan-600/20 hover:scale-[1.02] active:scale-95 transition-all text-white">إضافة الملف الآن</button>
                     </div>
 
                     <div className="space-y-3">
                       {songs.map(s => (
                         <div key={s.id} className="flex items-center gap-6 p-4 bg-white/5 rounded-[1.5rem] border border-white/5 hover:border-white/10 transition-all group">
-                          <img src={s.image} className="w-16 h-16 rounded-xl object-cover shadow-lg" />
+                          <img src={s.image} alt={s.name} className="w-16 h-16 rounded-xl object-cover shadow-lg" />
                           <div className="flex-1 truncate">
-                            <div className="font-black text-lg">{s.name}</div>
+                            <div className="font-black text-lg text-white">{s.name}</div>
                             <div className="text-xs text-white/30 font-bold uppercase tracking-widest">{s.folder}</div>
                           </div>
                           <div className="flex gap-2">
@@ -1403,15 +1391,15 @@ const App: React.FC = () => {
                 {/* Settings Tab */}
                 {adminTab === 'settings' && (
                   <div className="space-y-10">
-                    <h3 className="text-3xl font-black">إعدادات النظام الأساسية</h3>
+                    <h3 className="text-3xl font-black text-white">إعدادات النظام الأساسية</h3>
 
                     <div className="space-y-8 bg-white/5 p-10 rounded-[3rem] border border-white/10 shadow-2xl">
                       <div className="space-y-3">
                         <label className="block text-sm font-black text-cyan-400 mr-2">نص الترحيب الرئيسي</label>
-                          <IsolatedInput
+                        <IsolatedInput
                           value={draftSettings.welcome}
                           onValue={v => setDraftSettings(prev => ({ ...prev, welcome: v }))}
-                          className="w-full bg-black/60 border border-white/10 p-5 rounded-2xl text-xl font-black text-center"
+                          className="w-full bg-black/60 border border-white/10 p-5 rounded-2xl text-xl font-black text-center text-white"
                         />
                       </div>
 
@@ -1419,7 +1407,7 @@ const App: React.FC = () => {
                         <div className="flex items-center gap-4">
                           <div className="w-12 h-12 rounded-2xl bg-cyan-500/20 flex items-center justify-center text-cyan-400"><Users size={24} /></div>
                           <div>
-                            <div className="font-black text-lg">عداد الزيارات</div>
+                            <div className="font-black text-lg text-white">عداد الزيارات</div>
                             <div className="text-xs text-white/30">إظهار عدد زوار الموقع للعامة</div>
                           </div>
                         </div>
@@ -1434,57 +1422,77 @@ const App: React.FC = () => {
                         </label>
                       </div>
 
-                      <div className="p-10 bg-purple-500/5 rounded-[3rem] border border-purple-500/20 space-y-8 relative overflow-hidden">
-                        <div className="absolute top-0 right-0 p-8 opacity-5"><Zap size={100} /></div>
-                        <h4 className="text-2xl font-black text-purple-400 flex items-center gap-3"><Sparkles size={24} /> محرك العرض (Hero Engine)</h4>
+                      <div className="p-10 bg-purple-500/5 rounded-[3rem] border border-purple-500/20 space-y-6">
+                        <div className="font-black text-xl text-purple-400 mb-4">إعدادات الهيرو والخلفية</div>
 
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <div className="font-black text-lg">وضع Hero الثابت</div>
-                            <div className="text-xs text-white/30">تجاهل خلفيات الأغاني واستخدام خلفية ثابتة</div>
-                          </div>
-                          <label className="relative inline-flex items-center cursor-pointer">
-                            <input
-                              type="checkbox"
-                              className="sr-only peer"
-                              checked={draftSettings.heroMode}
-                              onChange={e => setDraftSettings({ ...draftSettings, heroMode: e.target.checked })}
-                            />
-                            <div className="w-14 h-7 bg-white/10 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-1 after:left-1 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
-                          </label>
-                        </div>
-
-                        <div className="space-y-3">
-                          <label className="text-xs font-black text-white/40 mr-2">رابط الوسائط (صورة/فيديو)</label>
-                          <IsolatedInput
-                            value={draftSettings.heroImg}
-                            onValue={v => setDraftSettings(prev => ({ ...prev, heroImg: v }))}
-                            placeholder="ضع الرابط هنا"
-                            className="w-full bg-black/60 border border-white/10 p-5 rounded-2xl text-lg font-mono"
+                        <div className="flex items-center justify-between p-4 bg-black/40 rounded-2xl border border-white/5">
+                          <span className="font-bold text-white">تفعيل خلفية الهيرو المخصصة</span>
+                          <input
+                            type="checkbox"
+                            checked={draftSettings.heroMode}
+                            onChange={e => setDraftSettings({ ...draftSettings, heroMode: e.target.checked })}
+                            className="w-5 h-5 accent-cyan-500 cursor-pointer"
                           />
                         </div>
 
-                        <div className="grid md:grid-cols-2 gap-6">
-                          <div className="space-y-2">
-                            <label className="text-xs font-black text-white/40 mr-2">نوع الوسائط</label>
+                        <div className="grid md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-xs font-black text-white/40 mb-2 block">نوع الهيرو</label>
                             <select
                               value={draftSettings.heroType}
-                              onChange={e => setDraftSettings({ ...draftSettings, heroType: e.target.value as any })}
-                              className="w-full bg-black/60 border border-white/10 p-4 rounded-2xl font-bold"
+                              onChange={e => setDraftSettings({ ...draftSettings, heroType: e.target.value as 'image' | 'video' })}
+                              className="w-full bg-black/60 border border-white/10 p-4 rounded-2xl font-bold text-white"
                             >
-                              <option value="image">صورة احترافية</option>
-                              <option value="video">فيديو تفاعلي</option>
+                              <option value="image">صورة</option>
+                              <option value="video">فيديو</option>
                             </select>
                           </div>
-                          <div className="space-y-2">
-                            <label className="text-xs font-black text-white/40 mr-2">نمط الملاءمة</label>
+                          <div>
+                            <label className="text-xs font-black text-white/40 mb-2 block">طريقة ملاءمة الخلفية (Fit)</label>
                             <select
                               value={draftSettings.bgFit}
-                              onChange={e => setDraftSettings({ ...draftSettings, bgFit: e.target.value as any })}
-                              className="w-full bg-black/60 border border-white/10 p-4 rounded-2xl font-bold"
+                              onChange={e => setDraftSettings({ ...draftSettings, bgFit: e.target.value })}
+                              className="w-full bg-black/60 border border-white/10 p-4 rounded-2xl font-bold text-white"
                             >
-                              <option value="cover">ملء كامل (Cover)</option>
-                              <option value="contain">احتواء ذكي (Contain)</option>
+                              <option value="cover">ملاءمة كاملة (Cover)</option>
+                              <option value="contain">احتواء (Contain)</option>
+                              <option value="auto">تلقائي (Auto)</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="text-xs font-black text-white/40 mb-2 block">رابط صورة/فيديو الهيرو</label>
+                          <IsolatedInput
+                            value={draftSettings.heroImg}
+                            onValue={v => setDraftSettings(prev => ({ ...prev, heroImg: v }))}
+                            className="w-full bg-black/60 border border-white/10 p-4 rounded-2xl font-mono text-sm text-white"
+                            placeholder="https://..."
+                          />
+                        </div>
+
+                        <div className="grid md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-xs font-black text-white/40 mb-2 block">تأثير الحركة (Animation)</label>
+                            <select
+                              value={draftSettings.animType}
+                              onChange={e => setDraftSettings({ ...draftSettings, animType: e.target.value })}
+                              className="w-full bg-black/60 border border-white/10 p-4 rounded-2xl font-bold text-white"
+                            >
+                              <option value="zoom-in">تكبير تدريجي (Zoom In)</option>
+                              <option value="none">بدون حركة (None)</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="text-xs font-black text-white/40 mb-2 block">فلاتر الخلفية (Filter)</label>
+                            <select
+                              value={draftSettings.bgFilter}
+                              onChange={e => setDraftSettings({ ...draftSettings, bgFilter: e.target.value })}
+                              className="w-full bg-black/60 border border-white/10 p-4 rounded-2xl font-bold text-white"
+                            >
+                              <option value="mode-vivid">حيوية (Vivid)</option>
+                              <option value="mode-dark">داكنة (Dark)</option>
+                              <option value="mode-blur">ضبابية (Blur)</option>
                             </select>
                           </div>
                         </div>
@@ -1492,63 +1500,17 @@ const App: React.FC = () => {
 
                       <button
                         onClick={() => {
-                          const payload = { ...draftSettings, visitorCount: settings.visitorCount };
-                          update(ref(db, 'settings'), payload)
-                            .then(() => { setSettings(payload); alert("تم تحديث كافة الإعدادات بنجاح"); })
-                            .catch(e => alert("فشل الحفظ: " + e.message));
+                          update(ref(db, 'settings'), draftSettings)
+                            .then(() => {
+                              setSettings(draftSettings);
+                              alert('تم حفظ الإعدادات بنجاح!');
+                            })
+                            .catch(err => alert('خطأ أثناء الحفظ: ' + err.message));
                         }}
-                        className="w-full py-6 bg-gradient-to-r from-cyan-600 to-purple-600 rounded-[2rem] font-black text-2xl shadow-2xl shadow-cyan-600/30 hover:scale-[1.01] active:scale-95 transition-all"
+                        className="w-full py-5 bg-gradient-to-r from-cyan-500 to-purple-600 rounded-[2rem] font-black text-xl shadow-2xl hover:scale-[1.02] active:scale-95 transition-all text-white"
                       >
-                        حفظ التعديلات
+                        حفظ جميع الإعدادات
                       </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Pages Tab */}
-                {adminTab === 'pages' && (
-                  <div className="space-y-8">
-                    <h3 className="text-3xl font-black">منشئ المحتوى التفاعلي</h3>
-                    <div className="bg-white/5 p-10 rounded-[3rem] border border-white/10 space-y-6 shadow-2xl">
-                      <div className="grid md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                          <label className="text-xs font-black text-white/40 mr-2">مُعرف الصفحة (English ID)</label>
-                          <input id="pg-id" placeholder="مثال: about_us" className="w-full bg-black/60 border border-white/10 p-5 rounded-2xl font-bold" />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-xs font-black text-white/40 mr-2">عنوان القائمة (Arabic)</label>
-                          <input id="pg-title" placeholder="مثال: من نحن" className="w-full bg-black/60 border border-white/10 p-5 rounded-2xl font-bold" />
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-xs font-black text-white/40 mr-2">محتوى الصفحة (HTML / Text)</label>
-                        <textarea id="pg-content" rows={12} placeholder="اكتب محتوى الصفحة هنا بصيغة HTML..." className="w-full bg-black/60 border border-white/10 p-6 rounded-[2rem] text-lg font-mono leading-relaxed" />
-                      </div>
-                      <button
-                        onClick={() => {
-                          const id = (document.getElementById('pg-id') as HTMLInputElement).value;
-                          const title = (document.getElementById('pg-title') as HTMLInputElement).value;
-                          const content = (document.getElementById('pg-content') as HTMLTextAreaElement).value;
-                          if (id && title) {
-                            set(ref(db, `custom_pages/${id}`), { title, content, icon: 'MoreHorizontal' }).then(() => alert("تم نشر الصفحة بنجاح!")).catch(e => alert("خطأ في الصلاحيات: " + e.message));
-                          } else {
-                            alert("يرجى إكمال الحقول الأساسية");
-                          }
-                        }}
-                        className="w-full py-6 bg-purple-600 rounded-full font-black text-xl shadow-2xl shadow-purple-600/20 hover:scale-[1.02] transition-all"
-                      >
-                        نشر الصفحة الجديدة
-                      </button>
-                    </div>
-
-                    <div className="grid gap-4">
-                      <h4 className="text-xl font-black text-white/40 mt-8 mb-4">الصفحات الحالية</h4>
-                      {customPages.map(pg => (
-                        <div key={pg.id} className="flex items-center justify-between p-6 bg-white/5 border border-white/5 rounded-2xl hover:bg-white/10 transition-all">
-                          <div className="font-black text-lg">{pg.title} <span className="text-xs text-white/20 ml-2">({pg.id})</span></div>
-                          <button onClick={() => confirm('حذف الصفحة؟') && remove(ref(db, `custom_pages/${pg.id}`)).catch(e => console.error(e))} className="w-10 h-10 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all"><Trash2 size={18} /></button>
-                        </div>
-                      ))}
                     </div>
                   </div>
                 )}
@@ -1557,58 +1519,8 @@ const App: React.FC = () => {
           </div>
         </div>
       )}
-
-      {/* Audio Element */}
-      <audio
-        ref={audioRef}
-        onEnded={nextSong}
-        autoPlay={false}
-      />
     </div>
   );
 };
-
-// Sub-components
-const SidebarBtn: React.FC<{ active: boolean; onClick: () => void; icon: React.ReactNode; label: string }> = ({ active, onClick, icon, label }) => (
-  <button
-    onClick={onClick}
-    className={`w-full flex items-center gap-4 px-6 py-4 rounded-2xl transition-all duration-500 group relative overflow-hidden ${active ? 'bg-gradient-to-r from-cyan-500/20 to-transparent text-cyan-400 border-r-4 border-cyan-400 shadow-[10px_0_30px_rgba(245,158,11,0.15)]' : 'text-white/40 hover:bg-white/10 hover:text-white'}`}
-  >
-    {active && <div className="absolute inset-0 bg-cyan-400/5 blur-xl"></div>}
-    <span className={`relative z-10 transition-transform duration-500 ${active ? 'scale-110 drop-shadow-[0_0_8px_rgba(245,158,11,0.8)]' : 'group-hover:scale-110'}`}>{icon}</span>
-    <span className={`relative z-10 font-bold tracking-wide ${active ? 'text-white' : ''}`}>{label}</span>
-  </button>
-);
-
-const MobNavBtn: React.FC<{ active: boolean; onClick: () => void; icon: React.ReactNode; label: string }> = ({ active, onClick, icon, label }) => (
-  <button
-    onClick={onClick}
-    className={`flex flex-col items-center gap-1.5 transition-all duration-500 flex-1 relative ${active ? 'text-cyan-400 -translate-y-4' : 'text-white/30 hover:text-white/60'}`}
-  >
-    <div className={`p-3 rounded-2xl transition-all duration-500 flex items-center justify-center ${active ? 'bg-gradient-to-br from-cyan-500 to-blue-600 shadow-[0_10px_20px_rgba(245,158,11,0.3)] text-black scale-110' : ''}`}>
-      {icon}
-    </div>
-    <span className={`text-[10px] font-black uppercase tracking-widest absolute -bottom-5 transition-all duration-500 ${active ? 'opacity-100 translate-y-0 text-cyan-400' : 'opacity-0 translate-y-2'}`}>{label}</span>
-  </button>
-);
-
-const AdminNavBtn: React.FC<{ active: boolean; onClick: () => void; icon: React.ReactNode; label: string }> = ({ active, onClick, icon, label }) => (
-  <button
-    onClick={onClick}
-    className={`flex items-center gap-4 p-4 rounded-2xl transition-all duration-300 font-bold ${active ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/30' : 'text-white/40 hover:bg-white/10 hover:text-white'}`}
-  >
-    <span className={active ? 'scale-110 transition-transform' : ''}>{icon}</span>
-    <span className="hidden md:inline">{label}</span>
-  </button>
-);
-
-// Register Service Worker for PWA
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then(reg => console.log('PWA Ready!'))
-      .catch(err => console.log('PWA Failed', err));
-  });
-}
 
 export default App;
