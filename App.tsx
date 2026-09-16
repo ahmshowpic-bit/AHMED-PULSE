@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react';
 import {
   Home,
   Music as MusicIcon,
@@ -36,6 +36,9 @@ import {
 } from './firebase';
 import { Song, DiaryPost, ContactMessage, CustomPage, AppSettings, TabId } from './types';
 
+let __pulseDbgRender = 0;
+let __pulseDbgTimeUpdates = 0;
+
 // Components defined outside for better performance
 const VisitorBadge: React.FC<{ count: number; visible: boolean }> = ({ count, visible }) => {
   if (!visible) return null;
@@ -54,7 +57,201 @@ const VisitorBadge: React.FC<{ count: number; visible: boolean }> = ({ count, vi
   );
 };
 
+const EQ_BAR_HEIGHTS = [35, 78, 52, 92, 44];
+
+const HeroBackground = React.memo(function HeroBackground({
+  backgroundImage,
+  backgroundSize,
+  filter,
+  animZoom,
+  showVideo,
+  videoSrc,
+}: {
+  backgroundImage: string;
+  backgroundSize: string;
+  filter: string;
+  animZoom: boolean;
+  showVideo: boolean;
+  videoSrc: string;
+}) {
+  return (
+    <>
+      <div className="absolute inset-0 z-0 overflow-hidden" style={{ filter }}>
+        <div
+          className={`absolute inset-[-8%] bg-center bg-no-repeat ${animZoom ? 'anim-zoom-in' : ''}`}
+          style={{ backgroundImage, backgroundSize, backgroundPosition: 'center' }}
+        />
+      </div>
+      {showVideo && (
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover z-0 opacity-50"
+          src={videoSrc}
+        />
+      )}
+    </>
+  );
+});
+
+const ProgressTrack: React.FC<{
+  audioRef: React.RefObject<HTMLAudioElement | null>;
+  wrapClassName: string;
+  trackClassName: string;
+  fillClassName: string;
+  onSeek: (e: React.MouseEvent<HTMLDivElement>) => void;
+}> = ({ audioRef, wrapClassName, trackClassName, fillClassName, onSeek }) => {
+  const [progress, setProgress] = useState(0);
+  useEffect(() => {
+    const el = audioRef.current;
+    if (!el) return;
+    let raf = 0;
+    const onTime = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        if (!el.duration) return;
+        __pulseDbgTimeUpdates++;
+        // #region agent log
+        if (__pulseDbgTimeUpdates % 8 === 0) {
+          fetch('http://127.0.0.1:7665/ingest/2b9de6b4-2c41-4017-9854-e675da82e0a5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'99e108'},body:JSON.stringify({sessionId:'99e108',runId:'post-fix',hypothesisId:'C',location:'App.tsx:ProgressTrack',message:'progress isolated',data:{n:__pulseDbgTimeUpdates,progressPct:Math.round((el.currentTime/el.duration)*100)},timestamp:Date.now()})}).catch(()=>{});
+        }
+        // #endregion
+        setProgress((el.currentTime / el.duration) * 100);
+      });
+    };
+    el.addEventListener('timeupdate', onTime);
+    return () => {
+      el.removeEventListener('timeupdate', onTime);
+      cancelAnimationFrame(raf);
+    };
+  }, [audioRef]);
+  return (
+    <div className={wrapClassName} onClick={onSeek}>
+      <div className={trackClassName}>
+        <div className={fillClassName} style={{ width: `${progress}%` }} />
+      </div>
+    </div>
+  );
+};
+
+const DiaryComposer: React.FC<{ onPublish: (name: string, text: string) => void }> = ({ onPublish }) => {
+  const [name, setName] = useState('');
+  const [msg, setMsg] = useState('');
+  return (
+    <div className="glass border border-white/10 p-8 rounded-[3rem] mb-12 shadow-2xl relative overflow-hidden">
+      <div className="absolute -top-10 -left-10 w-40 h-40 bg-cyan-500/10 blur-[60px] rounded-full" />
+      <div className="relative z-10">
+        <div className="grid md:grid-cols-2 gap-4 mb-4">
+          <input
+            value={name}
+            onChange={e => {
+              // #region agent log
+              fetch('http://127.0.0.1:7665/ingest/2b9de6b4-2c41-4017-9854-e675da82e0a5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'99e108'},body:JSON.stringify({sessionId:'99e108',runId:'post-fix',hypothesisId:'A',location:'App.tsx:diaryName',message:'diary name keystroke',data:{len:e.target.value.length,appRenders:__pulseDbgRender},timestamp:Date.now()})}).catch(()=>{});
+              // #endregion
+              setName(e.target.value);
+            }}
+            placeholder="اسمك المستعار"
+            className="bg-black/40 border border-white/10 p-5 rounded-2xl text-white placeholder:text-white/20 font-bold"
+            maxLength={20}
+          />
+          <div className="flex items-center gap-3 px-4 py-2 rounded-2xl bg-white/5 border border-white/5">
+            <Sparkles size={20} className="text-yellow-400" />
+            <span className="text-xs text-white/40">شاركنا لحظاتك المميزة.</span>
+          </div>
+        </div>
+        <textarea
+          value={msg}
+          onChange={e => {
+            // #region agent log
+            fetch('http://127.0.0.1:7665/ingest/2b9de6b4-2c41-4017-9854-e675da82e0a5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'99e108'},body:JSON.stringify({sessionId:'99e108',runId:'post-fix',hypothesisId:'A',location:'App.tsx:diaryMsg',message:'diary text keystroke',data:{len:e.target.value.length,appRenders:__pulseDbgRender},timestamp:Date.now()})}).catch(()=>{});
+            // #endregion
+            setMsg(e.target.value);
+          }}
+          placeholder="ما الذي يدور في ذهنك اليوم؟"
+          rows={4}
+          className="w-full bg-black/40 border border-white/10 p-6 rounded-[2rem] mb-6 text-white placeholder:text-white/20 resize-none text-lg leading-relaxed"
+        />
+        <button
+          onClick={() => {
+            if (!msg.trim()) return;
+            onPublish(name, msg);
+            setMsg('');
+          }}
+          className="w-full md:w-auto px-12 py-5 bg-gradient-to-r from-cyan-500 to-purple-600 rounded-full font-black text-lg shadow-2xl shadow-cyan-500/20 hover:scale-[1.05] active:scale-95 transition-all flex items-center justify-center gap-3 float-left"
+        >
+          نشر الآن <Send size={20} />
+        </button>
+        <div className="clear-both" />
+      </div>
+    </div>
+  );
+};
+
+const ContactFields: React.FC<{ onSend: (name: string, text: string) => void }> = ({ onSend }) => {
+  const [name, setName] = useState('');
+  const [msg, setMsg] = useState('');
+  return (
+    <div className="space-y-8 text-right relative z-10">
+      <div className="group">
+        <label className="text-sm font-black text-cyan-400 block mb-3 mr-4 uppercase tracking-wider">اسمك الكريم</label>
+        <input
+          value={name}
+          onChange={e => setName(e.target.value)}
+          placeholder="اكتب اسمك هنا"
+          className="w-full bg-black/40 border border-white/10 p-6 rounded-3xl text-white text-center text-xl focus:ring-2 ring-cyan-500/50 outline-none transition-all group-hover:border-white/20 shadow-inner"
+        />
+      </div>
+      <div className="group">
+        <label className="text-sm font-black text-cyan-400 block mb-3 mr-4 uppercase tracking-wider">محتوى الرسالة</label>
+        <textarea
+          value={msg}
+          onChange={e => {
+            // #region agent log
+            fetch('http://127.0.0.1:7665/ingest/2b9de6b4-2c41-4017-9854-e675da82e0a5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'99e108'},body:JSON.stringify({sessionId:'99e108',runId:'post-fix',hypothesisId:'A',location:'App.tsx:contactMsg',message:'contact text keystroke',data:{len:e.target.value.length,appRenders:__pulseDbgRender},timestamp:Date.now()})}).catch(()=>{});
+            // #endregion
+            setMsg(e.target.value);
+          }}
+          placeholder="بماذا تود أن تخبرني؟"
+          rows={6}
+          className="w-full bg-black/40 border border-white/10 p-6 rounded-[2.5rem] text-white resize-none text-center text-xl focus:ring-2 ring-cyan-500/50 outline-none transition-all group-hover:border-white/20 shadow-inner"
+        />
+      </div>
+      <button
+        onClick={() => {
+          if (!msg.trim()) return;
+          onSend(name, msg);
+          setMsg('');
+          setName('');
+        }}
+        className="w-full py-6 bg-gradient-to-r from-cyan-500 via-blue-600 to-purple-600 rounded-[2.5rem] font-black text-2xl shadow-[0_15px_30px_rgba(245,158,11,0.3)] hover:shadow-[0_20px_40px_rgba(245,158,11,0.5)] hover:-translate-y-1 active:translate-y-1 transition-all mt-8 flex items-center justify-center gap-4 group"
+      >
+        <Send size={28} className="group-hover:translate-x-[-8px] transition-transform" /> إرسال الرسالة الآن
+      </button>
+    </div>
+  );
+};
+
 // حجم الدفعة الواحدة عند التحميل (توفير باقة الزائر)
+const IsolatedInput: React.FC<React.InputHTMLAttributes<HTMLInputElement> & { onValue: (v: string) => void }> = ({ value, onValue, ...rest }) => {
+  const [local, setLocal] = useState(String(value ?? ''));
+  useEffect(() => { setLocal(String(value ?? '')); }, [value]);
+  return (
+    <input
+      {...rest}
+      value={local}
+      onChange={e => {
+        setLocal(e.target.value);
+        // #region agent log
+        fetch('http://127.0.0.1:7665/ingest/2b9de6b4-2c41-4017-9854-e675da82e0a5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'99e108'},body:JSON.stringify({sessionId:'99e108',runId:'post-fix',hypothesisId:'F',location:'App.tsx:IsolatedInput',message:'isolated admin keystroke',data:{len:e.target.value.length,appRenders:__pulseDbgRender},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
+      }}
+      onBlur={() => { if (local !== value) onValue(local); }}
+    />
+  );
+};
+
 const PAGE_SIZE = 20;
 
 const App: React.FC = () => {
@@ -100,16 +297,7 @@ const App: React.FC = () => {
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
   const [playlist, setPlaylist] = useState<Song[]>([]);
   const [volume, setVolume] = useState(0.8);
-  const [progress, setProgress] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-
-  // Community Input State
-  const [diaryName, setDiaryName] = useState('');
-  const [diaryMsg, setDiaryMsg] = useState('');
-
-  // Contact State
-  const [contactName, setContactName] = useState('');
-  const [contactMsg, setContactMsg] = useState('');
 
   // Admin Music Form
   const [newSongTitle, setNewSongTitle] = useState('');
@@ -122,6 +310,12 @@ const App: React.FC = () => {
   const [hasMoreSongs, setHasMoreSongs] = useState(false);
   const [hasMoreDiaries, setHasMoreDiaries] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+
+  useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7665/ingest/2b9de6b4-2c41-4017-9854-e675da82e0a5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'99e108'},body:JSON.stringify({sessionId:'99e108',runId:'post-fix',hypothesisId:'F',location:'App.tsx:mount',message:'viewport gpu context',data:{w:window.innerWidth,h:window.innerHeight,dpr:window.devicePixelRatio,isPc:window.innerWidth>=768},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
+  }, []);
 
   // Calculate Hero Song (The default song selected by admin)
   const heroSong = useMemo(() => songs.find(s => s.id === settings.defaultSongId), [songs, settings.defaultSongId]);
@@ -398,14 +592,6 @@ const App: React.FC = () => {
     playSong(playlist[prevIndex], playlist);
   };
 
-  const onTimeUpdate = () => {
-    if (!audioRef.current) return;
-    const { currentTime, duration } = audioRef.current;
-    if (duration) {
-      setProgress((currentTime / duration) * 100);
-    }
-  };
-
   const onSeek = (e: React.MouseEvent<HTMLDivElement>) => {
     e.stopPropagation();
     if (!audioRef.current || !audioRef.current.duration) return;
@@ -444,11 +630,11 @@ const App: React.FC = () => {
     }
   };
 
-  const postDiaryEntry = () => {
-    if (!diaryMsg.trim()) return;
+  const postDiaryEntry = (name: string, text: string) => {
+    if (!text.trim()) return;
     const postData = {
-      name: (isAdmin && confirm("نشر كمسؤول؟")) ? "AHMED PULSE" : (diaryName || "مجهول"),
-      text: diaryMsg,
+      name: (isAdmin && confirm("نشر كمسؤول؟")) ? "AHMED PULSE" : (name || "مجهول"),
+      text,
       verified: isAdmin,
       date: new Date().toLocaleDateString('ar-EG'),
       likes: 0
@@ -461,14 +647,12 @@ const App: React.FC = () => {
       localStorage.setItem('offline_diaries_queue', JSON.stringify(queue));
       // Optimistic UI update
       setDiaries([{ id: 'offline-' + Date.now(), ...postData }, ...diaries]);
-      setDiaryMsg('');
       return;
     }
 
     push(ref(db, 'diaries'), postData).catch(err => {
       alert("فشل النشر. يرجى التأكد من صلاحيات قاعدة البيانات.");
     });
-    setDiaryMsg('');
   };
 
   const likePost = (id: string) => {
@@ -478,23 +662,19 @@ const App: React.FC = () => {
     });
   };
 
-  const sendMessage = () => {
-    if (!contactMsg.trim()) return;
-    const msgData = { name: contactName || "مجهول", msg: contactMsg };
+  const sendMessage = (name: string, text: string) => {
+    if (!text.trim()) return;
+    const msgData = { name: name || "مجهول", msg: text };
     
     if (isOffline) {
       alert("أنت تتصفح أوفلاين. تم حفظ رسالتك وسيتم إرسالها عند الاتصال بالإنترنت.");
       const queue = JSON.parse(localStorage.getItem('offline_msgs_queue') || '[]');
       queue.push(msgData);
       localStorage.setItem('offline_msgs_queue', JSON.stringify(queue));
-      setContactMsg('');
-      setContactName('');
       return;
     }
 
     push(ref(db, 'inbox'), msgData).then(() => {
-      setContactMsg('');
-      setContactName('');
       alert("تم الإرسال بنجاح!");
     }).catch(err => {
       alert("حدث خطأ أثناء الإرسال.");
@@ -536,56 +716,29 @@ const App: React.FC = () => {
     };
   }, [settings, currentSong, heroSong]);
 
+  // #region agent log
+  __pulseDbgRender++;
+  const __renderStart = performance.now();
+  fetch('http://127.0.0.1:7665/ingest/2b9de6b4-2c41-4017-9854-e675da82e0a5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'99e108'},body:JSON.stringify({sessionId:'99e108',runId:'post-fix',hypothesisId:'A',location:'App.tsx:render',message:'full App re-render',data:{n:__pulseDbgRender,activeTab,isPlaying,heroType:settings.heroType,animType:settings.animType,bgFilter:settings.bgFilter,songs:songs.length,diaries:diaries.length,playerExpanded:isPlayerExpanded},timestamp:Date.now()})}).catch(()=>{});
+  useLayoutEffect(() => {
+    fetch('http://127.0.0.1:7665/ingest/2b9de6b4-2c41-4017-9854-e675da82e0a5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'99e108'},body:JSON.stringify({sessionId:'99e108',runId:'post-fix',hypothesisId:'B',location:'App.tsx:commit',message:'commit after tree',data:{ms:Math.round((performance.now()-__renderStart)*100)/100,n:__pulseDbgRender,animZoom:settings.animType==='zoom-in',bgFilter:settings.bgFilter,activeTab},timestamp:Date.now()})}).catch(()=>{});
+  });
+  // #endregion
+
   return (
     <div className="relative h-[100dvh] w-screen max-w-[100vw] flex overflow-hidden">
-      {/* Style for dynamic animations */}
-      <style>
-        {`
-          @keyframes gradient-xy {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
-          }
-          .animate-gradient-slow {
-            background-size: 200% 200%;
-            animation: gradient-xy 8s ease infinite;
-          }
-          .animate-fade-in-up {
-            animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-          }
-          @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(30px); }
-            to { opacity: 1; transform: translateY(0); }
-          }
-          .glass-panel {
-            background: rgba(10, 10, 15, 0.4);
-            backdrop-filter: blur(24px);
-            -webkit-backdrop-filter: blur(24px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
-          }
-        `}
-      </style>
-
-      {/* Dynamic Background */}
-      <div
-        className={`absolute inset-0 z-0 transition-all duration-1000 bg-center bg-no-repeat ${settings.animType === 'zoom-in' ? 'anim-zoom-in' : ''}`}
-        style={backgroundStyle}
+      <HeroBackground
+        backgroundImage={backgroundStyle.backgroundImage}
+        backgroundSize={backgroundStyle.backgroundSize}
+        filter={backgroundStyle.filter}
+        animZoom={settings.animType === 'zoom-in'}
+        showVideo={settings.heroType === 'video' && settings.heroMode}
+        videoSrc={settings.heroImg}
       />
-      {settings.heroType === 'video' && settings.heroMode && (
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          className="absolute inset-0 w-full h-full object-cover z-0 opacity-50"
-          src={settings.heroImg}
-        />
-      )}
       <div className="absolute inset-0 z-[1] bg-gradient-to-t from-[#3d2410]/85 via-[#1a0f05]/20 to-black/10 pointer-events-none" />
 
       {/* --- Mobile Header --- */}
-      <header className="md:hidden fixed top-0 left-0 right-0 z-50 grid grid-cols-3 items-center px-6 py-4 bg-black/40 backdrop-blur-2xl border-b border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
+      <header className="md:hidden fixed top-0 left-0 right-0 z-50 grid grid-cols-3 items-center px-6 py-4 bg-black/80 border-b border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
         <div className="justify-self-start" />
         <div
           onClick={() => setActiveTab('home')}
@@ -618,7 +771,7 @@ const App: React.FC = () => {
       </header>
 
       {/* Sidebar - Desktop */}
-      <aside className="hidden md:flex w-[280px] bg-black/40 backdrop-blur-2xl border-l border-white/5 z-50 flex-col p-8 transition-all shadow-[-20px_0_40px_rgba(0,0,0,0.5)] relative">
+      <aside className="hidden md:flex w-[280px] bg-[#0a0a10]/95 border-l border-white/5 z-50 flex-col p-8 transition-all shadow-[-20px_0_40px_rgba(0,0,0,0.5)] relative">
         {/* Glow effect */}
         <div className="absolute top-0 left-0 right-0 h-32 bg-cyan-500/10 blur-[50px] pointer-events-none" />
 
@@ -670,11 +823,11 @@ const App: React.FC = () => {
       <main className="flex-1 h-full relative z-10 overflow-y-auto overflow-x-hidden overscroll-y-contain px-4 md:px-12 pt-20 md:pt-8 pb-40 scroll-smooth no-scrollbar">
         <div className="max-w-6xl mx-auto">
 
-          {/* Home Section */}
-          <section className={`${activeTab === 'home' ? 'block' : 'hidden'} animate-fade-in`}>
+          {activeTab === 'home' && (
+          <section className="animate-fade-in">
             {/* Hero Section */}
             <div className="min-h-[50vh] flex flex-col items-center justify-center text-center mt-12 md:mt-24 mb-32 relative">
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-cyan-500/10 blur-[150px] rounded-full pointer-events-none" />
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[280px] h-[280px] bg-cyan-500/10 blur-[40px] rounded-full pointer-events-none" />
 
               <h2 className="relative z-10 text-6xl md:text-8xl lg:text-[7rem] font-black text-transparent bg-clip-text bg-gradient-to-br from-white via-cyan-100 to-cyan-500 drop-shadow-[0_15px_30px_rgba(0,0,0,0.8)] leading-[1.1] px-4 arabic-text-container animate-fade-in-up mb-12">
                 {settings.welcome}
@@ -793,9 +946,10 @@ const App: React.FC = () => {
               </div>
             </div>
           </section>
+          )}
 
-          {/* Music Section */}
-          <section className={`${activeTab === 'music' ? 'block' : 'hidden'} animate-fade-in-up`}>
+          {activeTab === 'music' && (
+          <section className="animate-fade-in-up">
             <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-16 mt-12 gap-6">
               <h2 className="text-4xl md:text-5xl font-black flex items-center gap-4 drop-shadow-md">
                 <div className="w-16 h-16 rounded-2xl bg-cyan-500/10 flex items-center justify-center text-cyan-400 shadow-[0_0_20px_rgba(245,158,11,0.2)]">
@@ -837,7 +991,7 @@ const App: React.FC = () => {
                       </div>
                       {currentSong?.id === song.id ? (
                         <div className="flex gap-1.5 items-end h-8 px-4">
-                          {[1, 2, 3, 4, 5].map(b => <div key={b} className="w-1.5 bg-cyan-400 rounded-full animate-pulse shadow-[0_0_8px_#fbbf24]" style={{ height: `${Math.random() * 100}%`, animationDelay: `${b * 0.15}s` }} />)}
+                          {[1, 2, 3, 4, 5].map(b => <div key={b} className="w-1.5 bg-cyan-400 rounded-full animate-pulse shadow-[0_0_8px_#fbbf24]" style={{ height: `${EQ_BAR_HEIGHTS[b - 1]}%`, animationDelay: `${b * 0.15}s` }} />)}
                         </div>
                       ) : (
                         <div className="w-12 h-12 rounded-full border border-white/10 flex items-center justify-center text-white/20 group-hover:text-cyan-400 group-hover:border-cyan-500/30 transition-all opacity-50 group-hover:opacity-100">
@@ -879,45 +1033,15 @@ const App: React.FC = () => {
               </button>
             )}
           </section>
+          )}
 
-          {/* Diaries/Community Section */}
-          <section className={`${activeTab === 'diaries' ? 'block' : 'hidden'}`}>
+          {activeTab === 'diaries' && (
+          <section>
             <h2 className="text-4xl font-black mb-12 mt-8 flex items-center gap-4">
               <Users className="text-cyan-400" size={36} /> المجتمع الرقمي
             </h2>
 
-            <div className="glass border border-white/10 p-8 rounded-[3rem] mb-12 shadow-2xl relative overflow-hidden">
-              <div className="absolute -top-10 -left-10 w-40 h-40 bg-cyan-500/10 blur-[60px] rounded-full" />
-              <div className="relative z-10">
-                <div className="grid md:grid-cols-2 gap-4 mb-4">
-                  <input
-                    value={diaryName}
-                    onChange={e => setDiaryName(e.target.value)}
-                    placeholder="اسمك المستعار"
-                    className="bg-black/40 border border-white/10 p-5 rounded-2xl text-white placeholder:text-white/20 font-bold"
-                    maxLength={20}
-                  />
-                  <div className="flex items-center gap-3 px-4 py-2 rounded-2xl bg-white/5 border border-white/5">
-                    <Sparkles size={20} className="text-yellow-400" />
-                    <span className="text-xs text-white/40">شاركنا لحظاتك المميزة.</span>
-                  </div>
-                </div>
-                <textarea
-                  value={diaryMsg}
-                  onChange={e => setDiaryMsg(e.target.value)}
-                  placeholder="ما الذي يدور في ذهنك اليوم؟"
-                  rows={4}
-                  className="w-full bg-black/40 border border-white/10 p-6 rounded-[2rem] mb-6 text-white placeholder:text-white/20 resize-none text-lg leading-relaxed"
-                />
-                <button
-                  onClick={postDiaryEntry}
-                  className="w-full md:w-auto px-12 py-5 bg-gradient-to-r from-cyan-500 to-purple-600 rounded-full font-black text-lg shadow-2xl shadow-cyan-500/20 hover:scale-[1.05] active:scale-95 transition-all flex items-center justify-center gap-3 float-left"
-                >
-                  نشر الآن <Send size={20} />
-                </button>
-                <div className="clear-both" />
-              </div>
-            </div>
+            <DiaryComposer onPublish={postDiaryEntry} />
 
             <div className="grid grid-cols-1 gap-8">
               {diaries.length === 0 && <div className="text-center text-white/20 py-20 text-xl font-bold">المجتمع بانتظار مشاركتك الأولى...</div>}
@@ -968,13 +1092,14 @@ const App: React.FC = () => {
               )}
             </div>
           </section>
+          )}
 
-          {/* Contact Section */}
-          <section className={`${activeTab === 'contact' ? 'block' : 'hidden'} animate-fade-in-up`}>
-            <div className="max-w-3xl mx-auto bg-black/50 backdrop-blur-2xl border border-white/10 p-8 md:p-16 rounded-[4rem] text-center shadow-[0_20px_60px_rgba(0,0,0,0.8)] mt-12 relative overflow-hidden">
+          {activeTab === 'contact' && (
+          <section className="animate-fade-in-up">
+            <div className="max-w-3xl mx-auto bg-black/50 backdrop-blur-md border border-white/10 p-8 md:p-16 rounded-[4rem] text-center shadow-[0_20px_60px_rgba(0,0,0,0.8)] mt-12 relative overflow-hidden">
               {/* Background Glows */}
-              <div className="absolute top-0 left-0 w-64 h-64 bg-cyan-500/20 blur-[100px] rounded-full pointer-events-none" />
-              <div className="absolute bottom-0 right-0 w-64 h-64 bg-purple-500/10 blur-[100px] rounded-full pointer-events-none" />
+              <div className="absolute top-0 left-0 w-40 h-40 bg-cyan-500/20 blur-[40px] rounded-full pointer-events-none" />
+              <div className="absolute bottom-0 right-0 w-40 h-40 bg-purple-500/10 blur-[40px] rounded-full pointer-events-none" />
 
               <div className="w-28 h-28 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-500/30 rounded-[2.5rem] flex items-center justify-center text-cyan-400 mx-auto mb-10 shadow-[0_0_30px_rgba(245,158,11,0.2)] relative z-10">
                 <Mail size={56} />
@@ -982,33 +1107,7 @@ const App: React.FC = () => {
               <h2 className="text-5xl font-black mb-6 text-transparent bg-clip-text bg-gradient-to-r from-white to-cyan-100 relative z-10 tracking-tight">تواصل مباشر</h2>
               <p className="text-white/50 mb-12 text-xl max-w-lg mx-auto relative z-10">يسعدني دائماً استقبال رسائلكم واستفساراتكم على مدار الساعة.</p>
 
-              <div className="space-y-8 text-right relative z-10">
-                <div className="group">
-                  <label className="text-sm font-black text-cyan-400 block mb-3 mr-4 uppercase tracking-wider">اسمك الكريم</label>
-                  <input
-                    value={contactName}
-                    onChange={e => setContactName(e.target.value)}
-                    placeholder="اكتب اسمك هنا"
-                    className="w-full bg-black/40 border border-white/10 p-6 rounded-3xl text-white text-center text-xl focus:ring-2 ring-cyan-500/50 outline-none transition-all group-hover:border-white/20 shadow-inner"
-                  />
-                </div>
-                <div className="group">
-                  <label className="text-sm font-black text-cyan-400 block mb-3 mr-4 uppercase tracking-wider">محتوى الرسالة</label>
-                  <textarea
-                    value={contactMsg}
-                    onChange={e => setContactMsg(e.target.value)}
-                    placeholder="بماذا تود أن تخبرني؟"
-                    rows={6}
-                    className="w-full bg-black/40 border border-white/10 p-6 rounded-[2.5rem] text-white resize-none text-center text-xl focus:ring-2 ring-cyan-500/50 outline-none transition-all group-hover:border-white/20 shadow-inner"
-                  />
-                </div>
-                <button
-                  onClick={sendMessage}
-                  className="w-full py-6 bg-gradient-to-r from-cyan-500 via-blue-600 to-purple-600 rounded-[2.5rem] font-black text-2xl shadow-[0_15px_30px_rgba(245,158,11,0.3)] hover:shadow-[0_20px_40px_rgba(245,158,11,0.5)] hover:-translate-y-1 active:translate-y-1 transition-all mt-8 flex items-center justify-center gap-4 group"
-                >
-                  <Send size={28} className="group-hover:translate-x-[-8px] transition-transform" /> إرسال الرسالة الآن
-                </button>
-              </div>
+              <ContactFields onSend={sendMessage} />
 
               {/* Hidden Admin Trigger (PRESERVED EXACTLY FOR SECURITY) */}
               <div className="mt-20 opacity-[0.02] hover:opacity-100 transition-opacity duration-1000 relative z-20">
@@ -1022,16 +1121,18 @@ const App: React.FC = () => {
               </div>
             </div>
           </section>
+          )}
 
-          {/* Dynamic Pages */}
           {customPages.map(page => (
-            <section key={page.id} className={`${activeTab === page.id ? 'block' : 'hidden'}`}>
+            activeTab === page.id ? (
+              <section key={page.id}>
               <h2 className="text-4xl font-black mb-12 mt-8 border-r-8 border-cyan-400 pr-6">{page.title}</h2>
               <div
                 className="glass border border-white/10 p-10 md:p-16 rounded-[4rem] leading-relaxed prose prose-invert max-w-none text-xl shadow-2xl"
                 dangerouslySetInnerHTML={{ __html: page.content }}
               />
-            </section>
+              </section>
+            ) : null
           ))}
         </div>
       </main>
@@ -1041,22 +1142,17 @@ const App: React.FC = () => {
         onClick={() => setIsPlayerExpanded(true)}
         className={`fixed bottom-[88px] md:bottom-6 left-2 right-2 md:left-4 md:right-6 lg:left-[296px] rounded-2xl md:rounded-[2rem] z-[100] border border-white/10 flex items-center justify-between px-3 md:px-6 shadow-2xl transition-all duration-500 cursor-pointer overflow-visible
           ${isPlaying ? 'shadow-[0_20px_40px_rgba(245,158,11,0.15)] ring-1 ring-cyan-500/30' : 'shadow-[0_20px_40px_rgba(0,0,0,0.5)] bg-black/40'}
-          backdrop-blur-3xl bg-black/60
+          backdrop-blur-md bg-black/60
         `}
         style={{ height: 'clamp(64px, 10vw, 88px)' }}
       >
-        {/* Progress Bar Layer */}
-        <div
-          className="absolute -top-3 left-8 right-8 h-3 cursor-pointer group z-20 py-1"
-          onClick={(e) => onSeek(e)}
-        >
-          <div className="w-full h-1 group-hover:h-2 bg-white/10 rounded-full overflow-hidden relative transition-all duration-300">
-            <div
-              className="absolute top-0 right-0 h-full bg-gradient-to-l from-cyan-400 to-purple-500 shadow-[0_0_10px_#fbbf24] transition-all duration-200"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-        </div>
+        <ProgressTrack
+          audioRef={audioRef}
+          onSeek={onSeek}
+          wrapClassName="absolute -top-3 left-8 right-8 h-3 cursor-pointer group z-20 py-1"
+          trackClassName="w-full h-1 group-hover:h-2 bg-white/10 rounded-full overflow-hidden relative transition-all duration-300"
+          fillClassName="absolute top-0 right-0 h-full bg-gradient-to-l from-cyan-400 to-purple-500 shadow-[0_0_10px_#fbbf24] transition-all duration-200"
+        />
 
         {/* Player Left: Info */}
         <div className="flex items-center gap-2 md:gap-5 flex-1 z-10 min-w-0">
@@ -1107,12 +1203,11 @@ const App: React.FC = () => {
       </div>
 
       {/* --- Full Screen Expanded Player --- */}
-      <div
-        className={`fixed inset-0 z-[200] flex flex-col transition-transformers duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${isPlayerExpanded ? 'translate-y-0 opacity-100' : 'translate-y-[100%] opacity-0 pointer-events-none'}`}
-      >
-        <div className="absolute inset-0 bg-black/80 backdrop-blur-[50px] z-0" />
+      {isPlayerExpanded && (
+      <div className="fixed inset-0 z-[200] flex flex-col">
+        <div className="absolute inset-0 bg-black/80 z-0" />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-80 z-0" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80vw] h-[80vw] md:w-[40vw] md:h-[40vw] bg-cyan-500/20 blur-[100px] rounded-full z-0 opacity-50" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[40vw] h-[40vw] md:w-[20vw] md:h-[20vw] bg-cyan-500/20 blur-[40px] rounded-full z-0 opacity-50" />
 
         {/* Header */}
         <div className="p-8 flex justify-between items-center relative z-10">
@@ -1154,14 +1249,13 @@ const App: React.FC = () => {
           </div>
 
           {/* Progress */}
-          <div className="w-full max-w-xl md:max-w-3xl mb-8 md:mb-14 px-4" onClick={onSeek}>
-            <div className="h-2 md:h-3 bg-white/10 rounded-full overflow-hidden relative cursor-pointer group shadow-inner">
-              <div
-                className="absolute top-0 right-0 h-full bg-gradient-to-l from-cyan-400 via-blue-500 to-purple-600 transition-all duration-200"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-          </div>
+          <ProgressTrack
+            audioRef={audioRef}
+            onSeek={onSeek}
+            wrapClassName="w-full max-w-xl md:max-w-3xl mb-8 md:mb-14 px-4"
+            trackClassName="h-2 md:h-3 bg-white/10 rounded-full overflow-hidden relative cursor-pointer group shadow-inner"
+            fillClassName="absolute top-0 right-0 h-full bg-gradient-to-l from-cyan-400 via-blue-500 to-purple-600 transition-all duration-200"
+          />
 
           {/* Controls */}
           <div className="flex items-center justify-center gap-6 md:gap-10 lg:gap-16">
@@ -1177,9 +1271,8 @@ const App: React.FC = () => {
           </div>
         </div>
       </div>
-
-      {/* Mobile Bottom Navigation */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-[88px] pb-4 pt-2 border-t border-white/10 z-[150] flex items-center justify-around px-2 shadow-[0_-10px_30px_rgba(0,0,0,0.8)] bg-black/80 backdrop-blur-3xl">
+      )}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-[88px] pb-4 pt-2 border-t border-white/10 z-[150] flex items-center justify-around px-2 shadow-[0_-10px_30px_rgba(0,0,0,0.8)] bg-black/80 backdrop-blur-md">
         <MobNavBtn active={activeTab === 'home'} onClick={() => setActiveTab('home')} icon={<Home size={22} />} label="الرئيسية" />
         <MobNavBtn active={activeTab === 'music'} onClick={() => setActiveTab('music')} icon={<MusicIcon size={22} />} label="موسيقى" />
         <MobNavBtn active={activeTab === 'diaries'} onClick={() => setActiveTab('diaries')} icon={<Users />} label="المجتمع" />
@@ -1257,9 +1350,9 @@ const App: React.FC = () => {
                         {selectedFolder === 'new' && (
                           <div className="space-y-2">
                             <label className="text-xs font-black text-white/40 mr-2">اسم المجلد الجديد</label>
-                            <input
+                            <IsolatedInput
                               value={newFolderName}
-                              onChange={e => setNewFolderName(e.target.value)}
+                              onValue={setNewFolderName}
                               placeholder="أدخل اسماً للمجلد"
                               className="w-full bg-black/60 border border-white/10 p-4 rounded-2xl text-lg"
                             />
@@ -1270,16 +1363,16 @@ const App: React.FC = () => {
                       <div className="grid md:grid-cols-2 gap-6">
                         <div className="space-y-2">
                           <label className="text-xs font-black text-white/40 mr-2">اسم الأغنية</label>
-                          <input value={newSongTitle} onChange={e => setNewSongTitle(e.target.value)} placeholder="مثال: لحن الخلود" className="w-full bg-black/60 border border-white/10 p-4 rounded-2xl text-lg" />
+                          <IsolatedInput value={newSongTitle} onValue={setNewSongTitle} placeholder="مثال: لحن الخلود" className="w-full bg-black/60 border border-white/10 p-4 rounded-2xl text-lg" />
                         </div>
                         <div className="space-y-2">
                           <label className="text-xs font-black text-white/40 mr-2">رابط ملف MP3</label>
-                          <input value={newSongUrl} onChange={e => setNewSongUrl(e.target.value)} placeholder="https://..." className="w-full bg-black/60 border border-white/10 p-4 rounded-2xl text-lg font-mono" />
+                          <IsolatedInput value={newSongUrl} onValue={setNewSongUrl} placeholder="https://..." className="w-full bg-black/60 border border-white/10 p-4 rounded-2xl text-lg font-mono" />
                         </div>
                       </div>
                       <div className="space-y-2">
                         <label className="text-xs font-black text-white/40 mr-2">رابط صورة الغلاف</label>
-                        <input value={newSongImg} onChange={e => setNewSongImg(e.target.value)} placeholder="https://..." className="w-full bg-black/60 border border-white/10 p-4 rounded-2xl text-lg font-mono" />
+                        <IsolatedInput value={newSongImg} onValue={setNewSongImg} placeholder="https://..." className="w-full bg-black/60 border border-white/10 p-4 rounded-2xl text-lg font-mono" />
                       </div>
                       <button onClick={addMusicAdmin} className="w-full py-5 bg-cyan-600 rounded-[2rem] font-black text-xl shadow-2xl shadow-cyan-600/20 hover:scale-[1.02] active:scale-95 transition-all">إضافة الملف الآن</button>
                     </div>
@@ -1315,9 +1408,9 @@ const App: React.FC = () => {
                     <div className="space-y-8 bg-white/5 p-10 rounded-[3rem] border border-white/10 shadow-2xl">
                       <div className="space-y-3">
                         <label className="block text-sm font-black text-cyan-400 mr-2">نص الترحيب الرئيسي</label>
-                        <input
+                          <IsolatedInput
                           value={draftSettings.welcome}
-                          onChange={e => setDraftSettings({ ...draftSettings, welcome: e.target.value })}
+                          onValue={v => setDraftSettings(prev => ({ ...prev, welcome: v }))}
                           className="w-full bg-black/60 border border-white/10 p-5 rounded-2xl text-xl font-black text-center"
                         />
                       </div>
@@ -1363,9 +1456,9 @@ const App: React.FC = () => {
 
                         <div className="space-y-3">
                           <label className="text-xs font-black text-white/40 mr-2">رابط الوسائط (صورة/فيديو)</label>
-                          <input
+                          <IsolatedInput
                             value={draftSettings.heroImg}
-                            onChange={e => setDraftSettings({ ...draftSettings, heroImg: e.target.value })}
+                            onValue={v => setDraftSettings(prev => ({ ...prev, heroImg: v }))}
                             placeholder="ضع الرابط هنا"
                             className="w-full bg-black/60 border border-white/10 p-5 rounded-2xl text-lg font-mono"
                           />
@@ -1468,7 +1561,6 @@ const App: React.FC = () => {
       {/* Audio Element */}
       <audio
         ref={audioRef}
-        onTimeUpdate={onTimeUpdate}
         onEnded={nextSong}
         autoPlay={false}
       />
