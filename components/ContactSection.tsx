@@ -73,7 +73,7 @@ const ContactSection: React.FC<ContactSectionProps> = ({ active, isOffline, isAd
             onClick={sendMessage}
             className="w-full py-6 bg-gradient-to-r from-cyan-500 via-blue-600 to-purple-600 rounded-[2.5rem] font-black text-2xl shadow-[0_15px_30px_rgba(245,158,11,0.3)] hover:shadow-[0_20px_40px_rgba(245,158,11,0.5)] hover:-translate-y-1 active:translate-y-1 transition-all mt-8 flex items-center justify-center gap-4 group"
           >
-            <Send size={28} className="group-hover:translate-x-[-8px] transition-transform" /> إرسال الرسالة الآن
+            <Send size={28} className="group-hover:translate-x-[-8px] transition-transform" /> إرسال  
           </button>
         </div>
 
