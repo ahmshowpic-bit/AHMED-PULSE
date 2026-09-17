@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo, useEffect, useSyncExternalStore } from 'react';
-import { Users, Sparkles, Send, CheckCircle, Heart, Trash2, MessageCircle, ChevronDown, ChevronUp, ShieldCheck, UserRound, Pencil } from 'lucide-react';
+import { Users, Sparkles, Send, CheckCircle, Heart, Trash2, MessageCircle, ChevronDown, ChevronUp, ShieldCheck, UserRound } from 'lucide-react';
 import { DiaryPost } from '../types';
 import { db, ref, push, set, remove, runTransaction } from '../firebase';
 
@@ -80,18 +80,8 @@ const writeNickname = (value: string) => {
   return clean;
 };
 
-const clearNickname = () => {
-  try {
-    localStorage.removeItem(NICKNAME_KEY);
-  } catch (err) {
-    console.warn('تعذر حذف اسم الزائر:', err);
-  }
-  nicknameCache = '';
-  notifyNicknameChange();
-};
-
 /**
- * يعيد الاسم المحفوظ للزائر مع دوال الحفظ والتغيير.
+ * يعيد الاسم المحفوظ للزائر مع دالة الحفظ (الاسم يُثبَّت مرة واحدة ولا يُغيَّر).
  * أي مكوّن يستخدم الهوك يتحدّث فوراً عند حفظ الاسم من أي مكان آخر.
  */
 const useVisitorNickname = () => {
@@ -108,35 +98,25 @@ const useVisitorNickname = () => {
     return () => window.removeEventListener('storage', onStorage);
   }, []);
 
-  return { savedName, saveName: writeNickname, resetName: clearNickname };
+  return { savedName, saveName: writeNickname };
 };
 
 /* -------------------------------------------------------------------------- */
-/* مكوّن صغير: عرض الاسم المثبّت للزائر مع إمكانية تغييره                      */
+/* مكوّن صغير: عرض الاسم المثبّت للزائر (غير قابل للتغيير)                    */
 /* -------------------------------------------------------------------------- */
 interface SavedNameBadgeProps {
   name: string;
-  onChange: () => void;
   compact?: boolean;
 }
 
-const SavedNameBadge: React.FC<SavedNameBadgeProps> = React.memo(({ name, onChange, compact }) => (
+const SavedNameBadge: React.FC<SavedNameBadgeProps> = React.memo(({ name, compact }) => (
   <div
-    className={`flex items-center justify-between gap-3 rounded-2xl bg-white/5 border border-white/5 ${
+    className={`flex items-center gap-2 rounded-2xl bg-white/5 border border-white/5 ${
       compact ? 'px-4 py-2 mb-3' : 'px-5 py-4 mb-4'
     }`}
   >
-    <span className="flex items-center gap-2 min-w-0">
-      <UserRound size={compact ? 16 : 20} className="text-cyan-400 shrink-0" />
-      <span className={`font-black truncate ${compact ? 'text-xs' : 'text-sm'}`}>{name}</span>
-    </span>
-    <button
-      type="button"
-      onClick={onChange}
-      className="flex items-center gap-1 text-[11px] font-black text-white/40 hover:text-cyan-400 transition-all shrink-0"
-    >
-      <Pencil size={12} /> تغيير الاسم
-    </button>
+    <UserRound size={compact ? 16 : 20} className="text-cyan-400 shrink-0" />
+    <span className={`font-black truncate ${compact ? 'text-xs' : 'text-sm'}`}>{name}</span>
   </div>
 ));
 SavedNameBadge.displayName = 'SavedNameBadge';
@@ -202,7 +182,7 @@ interface CommentsSectionProps {
 
 const CommentsSection: React.FC<CommentsSectionProps> = React.memo(
   ({ postId, comments, isAdmin, isOffline, visitorId }) => {
-    const { savedName, saveName, resetName } = useVisitorNickname();
+    const { savedName, saveName } = useVisitorNickname();
     const [open, setOpen] = useState(false);
     const [text, setText] = useState('');
     const [name, setName] = useState('');
@@ -270,11 +250,6 @@ const CommentsSection: React.FC<CommentsSectionProps> = React.memo(
         .finally(() => setSubmitting(false));
     }, [text, submitting, isAdmin, asAdmin, name, savedName, saveName, isOffline, postId, visitorId]);
 
-    const handleChangeName = useCallback(() => {
-      setName(savedName);
-      resetName();
-    }, [savedName, resetName]);
-
     return (
       <div className="border-t border-white/5">
         <button
@@ -300,7 +275,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = React.memo(
               />
             )}
             {!isAdmin && savedName && (
-              <SavedNameBadge name={savedName} onChange={handleChangeName} compact />
+              <SavedNameBadge name={savedName} compact />
             )}
             {needsName && (
               <input
@@ -369,7 +344,7 @@ CommentsSection.displayName = 'CommentsSection';
 const DiariesSection: React.FC<DiariesSectionProps> = ({
   active, diaries, hasMoreDiaries, loadingMore, onLoadMore, isAdmin, isOffline, visitorId, onOptimisticAdd
 }) => {
-  const { savedName, saveName, resetName } = useVisitorNickname();
+  const { savedName, saveName } = useVisitorNickname();
   const [diaryName, setDiaryName] = useState('');
   const [diaryMsg, setDiaryMsg] = useState('');
   const [postAsAdmin, setPostAsAdmin] = useState(true);
@@ -426,11 +401,6 @@ const DiariesSection: React.FC<DiariesSectionProps> = ({
     setDiaryMsg('');
   }, [diaryMsg, diaryName, savedName, saveName, isAdmin, postAsAdmin, isOffline, visitorId, onOptimisticAdd]);
 
-  const handleChangeName = useCallback(() => {
-    setDiaryName(savedName);
-    resetName();
-  }, [savedName, resetName]);
-
   const toggleLike = useCallback((post: ExtendedDiaryPost) => {
     if (isOffline) {
       alert('لا يمكن الإعجاب أثناء التصفح دون اتصال بالإنترنت.');
@@ -482,7 +452,7 @@ const DiariesSection: React.FC<DiariesSectionProps> = ({
             />
           ) : savedName ? (
             <div className="grid md:grid-cols-2 gap-4 mb-4">
-              <SavedNameBadge name={savedName} onChange={handleChangeName} />
+              <SavedNameBadge name={savedName} />
               <div className="flex items-center gap-3 px-4 py-2 rounded-2xl bg-white/5 border border-white/5 mb-4">
                 <Sparkles size={20} className="text-yellow-400" />
                 <span className="text-xs text-white/40">شاركنا لحظاتك المميزة.</span>
