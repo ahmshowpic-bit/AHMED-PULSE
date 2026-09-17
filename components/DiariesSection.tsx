@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useMemo } from 'react';
-import { Users, Sparkles, Send, CheckCircle, Heart, Trash2, MessageCircle, ChevronDown, ChevronUp, ShieldCheck, UserRound } from 'lucide-react';
+import React, { useState, useCallback, useMemo, useEffect, useSyncExternalStore } from 'react';
+import { Users, Sparkles, Send, CheckCircle, Heart, Trash2, MessageCircle, ChevronDown, ChevronUp, ShieldCheck, UserRound, Pencil } from 'lucide-react';
 import { DiaryPost } from '../types';
 import { db, ref, push, set, remove, runTransaction } from '../firebase';
 
@@ -37,6 +37,109 @@ interface DiariesSectionProps {
   visitorId: string;
   onOptimisticAdd: (post: DiaryPost) => void;
 }
+
+/* -------------------------------------------------------------------------- */
+/* مخزن اسم الزائر: مصدر واحد للحقيقة يتشارك فيه كل المكوّنات في الصفحة        */
+/* -------------------------------------------------------------------------- */
+const NICKNAME_KEY = 'visitor_nickname';
+const MAX_NICKNAME_LENGTH = 20;
+
+const readStoredNickname = (): string => {
+  try {
+    return (localStorage.getItem(NICKNAME_KEY) || '').trim();
+  } catch {
+    return '';
+  }
+};
+
+let nicknameCache: string = typeof window === 'undefined' ? '' : readStoredNickname();
+const nicknameListeners = new Set<() => void>();
+
+const notifyNicknameChange = () => nicknameListeners.forEach(fn => fn());
+
+const subscribeNickname = (listener: () => void) => {
+  nicknameListeners.add(listener);
+  return () => {
+    nicknameListeners.delete(listener);
+  };
+};
+
+const getNicknameSnapshot = () => nicknameCache;
+const getNicknameServerSnapshot = () => '';
+
+const writeNickname = (value: string) => {
+  const clean = value.trim().slice(0, MAX_NICKNAME_LENGTH);
+  if (!clean || clean === nicknameCache) return clean;
+  try {
+    localStorage.setItem(NICKNAME_KEY, clean);
+  } catch (err) {
+    console.warn('تعذر حفظ اسم الزائر:', err);
+  }
+  nicknameCache = clean;
+  notifyNicknameChange();
+  return clean;
+};
+
+const clearNickname = () => {
+  try {
+    localStorage.removeItem(NICKNAME_KEY);
+  } catch (err) {
+    console.warn('تعذر حذف اسم الزائر:', err);
+  }
+  nicknameCache = '';
+  notifyNicknameChange();
+};
+
+/**
+ * يعيد الاسم المحفوظ للزائر مع دوال الحفظ والتغيير.
+ * أي مكوّن يستخدم الهوك يتحدّث فوراً عند حفظ الاسم من أي مكان آخر.
+ */
+const useVisitorNickname = () => {
+  const savedName = useSyncExternalStore(subscribeNickname, getNicknameSnapshot, getNicknameServerSnapshot);
+
+  // مزامنة بين تبويبات المتصفح المختلفة
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== NICKNAME_KEY) return;
+      nicknameCache = (e.newValue || '').trim();
+      notifyNicknameChange();
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
+
+  return { savedName, saveName: writeNickname, resetName: clearNickname };
+};
+
+/* -------------------------------------------------------------------------- */
+/* مكوّن صغير: عرض الاسم المثبّت للزائر مع إمكانية تغييره                      */
+/* -------------------------------------------------------------------------- */
+interface SavedNameBadgeProps {
+  name: string;
+  onChange: () => void;
+  compact?: boolean;
+}
+
+const SavedNameBadge: React.FC<SavedNameBadgeProps> = React.memo(({ name, onChange, compact }) => (
+  <div
+    className={`flex items-center justify-between gap-3 rounded-2xl bg-white/5 border border-white/5 ${
+      compact ? 'px-4 py-2 mb-3' : 'px-5 py-4 mb-4'
+    }`}
+  >
+    <span className="flex items-center gap-2 min-w-0">
+      <UserRound size={compact ? 16 : 20} className="text-cyan-400 shrink-0" />
+      <span className={`font-black truncate ${compact ? 'text-xs' : 'text-sm'}`}>{name}</span>
+    </span>
+    <button
+      type="button"
+      onClick={onChange}
+      className="flex items-center gap-1 text-[11px] font-black text-white/40 hover:text-cyan-400 transition-all shrink-0"
+    >
+      <Pencil size={12} /> تغيير الاسم
+    </button>
+  </div>
+));
+SavedNameBadge.displayName = 'SavedNameBadge';
 
 /* -------------------------------------------------------------------------- */
 /* مكوّن صغير: اختيار هوية النشر للمدير فقط (كمسؤول أو كزائر باسم اختياري)     */
@@ -77,7 +180,7 @@ const AdminIdentityToggle: React.FC<AdminIdentityToggleProps> = React.memo(
           value={name}
           onChange={e => setName(e.target.value)}
           placeholder={namePlaceholder}
-          maxLength={20}
+          maxLength={MAX_NICKNAME_LENGTH}
           className="bg-black/40 border border-white/10 p-4 rounded-2xl text-white placeholder:text-white/20 font-bold text-sm"
         />
       )}
@@ -99,11 +202,15 @@ interface CommentsSectionProps {
 
 const CommentsSection: React.FC<CommentsSectionProps> = React.memo(
   ({ postId, comments, isAdmin, isOffline, visitorId }) => {
+    const { savedName, saveName, resetName } = useVisitorNickname();
     const [open, setOpen] = useState(false);
     const [text, setText] = useState('');
     const [name, setName] = useState('');
     const [asAdmin, setAsAdmin] = useState(true);
     const [submitting, setSubmitting] = useState(false);
+
+    // الزائر العادي يُطلب منه الاسم مرة واحدة فقط؛ بعدها يُخفى الحقل نهائياً
+    const needsName = !isAdmin && !savedName;
 
     const commentList = useMemo(() => {
       if (!comments) return [];
@@ -115,7 +222,20 @@ const CommentsSection: React.FC<CommentsSectionProps> = React.memo(
     const submitComment = useCallback(() => {
       if (!text.trim() || submitting) return;
 
-      const finalName = isAdmin ? (asAdmin ? 'AHMED PULSE' : name.trim() || 'مجهول') : name.trim() || 'مجهول';
+      let finalName: string;
+      if (isAdmin) {
+        finalName = asAdmin ? 'AHMED PULSE' : name.trim() || 'مجهول';
+      } else if (savedName) {
+        finalName = savedName;
+      } else {
+        const typed = name.trim();
+        if (!typed) {
+          alert('اكتب اسمك المستعار أولاً، سيُحفظ مرة واحدة فقط.');
+          return;
+        }
+        finalName = saveName(typed);
+      }
+
       const finalVerified = isAdmin && asAdmin;
 
       const commentData: DiaryComment = {
@@ -148,7 +268,12 @@ const CommentsSection: React.FC<CommentsSectionProps> = React.memo(
           alert('فشل إرسال التعليق. يرجى المحاولة مرة أخرى.');
         })
         .finally(() => setSubmitting(false));
-    }, [text, submitting, isAdmin, asAdmin, name, isOffline, postId, visitorId]);
+    }, [text, submitting, isAdmin, asAdmin, name, savedName, saveName, isOffline, postId, visitorId]);
+
+    const handleChangeName = useCallback(() => {
+      setName(savedName);
+      resetName();
+    }, [savedName, resetName]);
 
     return (
       <div className="border-t border-white/5">
@@ -174,12 +299,15 @@ const CommentsSection: React.FC<CommentsSectionProps> = React.memo(
                 namePlaceholder="اسمك المستعار (اختياري)"
               />
             )}
-            {!isAdmin && (
+            {!isAdmin && savedName && (
+              <SavedNameBadge name={savedName} onChange={handleChangeName} compact />
+            )}
+            {needsName && (
               <input
                 value={name}
                 onChange={e => setName(e.target.value)}
-                placeholder="اسمك المستعار (اختياري)"
-                maxLength={20}
+                placeholder="اسمك المستعار (يُحفظ مرة واحدة)"
+                maxLength={MAX_NICKNAME_LENGTH}
                 className="w-full bg-black/40 border border-white/10 p-4 rounded-2xl mb-3 text-white placeholder:text-white/20 font-bold text-sm"
               />
             )}
@@ -196,7 +324,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = React.memo(
               <button
                 type="button"
                 onClick={submitComment}
-                disabled={submitting || !text.trim()}
+                disabled={submitting || !text.trim() || (needsName && !name.trim())}
                 className="px-5 rounded-2xl bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500 hover:text-black transition-all disabled:opacity-30 disabled:hover:bg-cyan-500/20 disabled:hover:text-cyan-400"
               >
                 <Send size={18} />
@@ -241,14 +369,30 @@ CommentsSection.displayName = 'CommentsSection';
 const DiariesSection: React.FC<DiariesSectionProps> = ({
   active, diaries, hasMoreDiaries, loadingMore, onLoadMore, isAdmin, isOffline, visitorId, onOptimisticAdd
 }) => {
+  const { savedName, saveName, resetName } = useVisitorNickname();
   const [diaryName, setDiaryName] = useState('');
   const [diaryMsg, setDiaryMsg] = useState('');
   const [postAsAdmin, setPostAsAdmin] = useState(true);
 
+  const needsName = !isAdmin && !savedName;
+
   const postDiaryEntry = useCallback(() => {
     if (!diaryMsg.trim()) return;
 
-    const finalName = isAdmin ? (postAsAdmin ? 'AHMED PULSE' : diaryName.trim() || 'مجهول') : diaryName.trim() || 'مجهول';
+    let finalName: string;
+    if (isAdmin) {
+      finalName = postAsAdmin ? 'AHMED PULSE' : diaryName.trim() || 'مجهول';
+    } else if (savedName) {
+      finalName = savedName;
+    } else {
+      const typed = diaryName.trim();
+      if (!typed) {
+        alert('اكتب اسمك المستعار أولاً، سيُحفظ مرة واحدة فقط.');
+        return;
+      }
+      finalName = saveName(typed);
+    }
+
     const finalVerified = isAdmin && postAsAdmin;
 
     const postData: any = {
@@ -280,7 +424,12 @@ const DiariesSection: React.FC<DiariesSectionProps> = ({
       alert('فشل النشر. يرجى التأكد من صلاحيات قاعدة البيانات.');
     });
     setDiaryMsg('');
-  }, [diaryMsg, diaryName, isAdmin, postAsAdmin, isOffline, visitorId, onOptimisticAdd]);
+  }, [diaryMsg, diaryName, savedName, saveName, isAdmin, postAsAdmin, isOffline, visitorId, onOptimisticAdd]);
+
+  const handleChangeName = useCallback(() => {
+    setDiaryName(savedName);
+    resetName();
+  }, [savedName, resetName]);
 
   const toggleLike = useCallback((post: ExtendedDiaryPost) => {
     if (isOffline) {
@@ -331,6 +480,14 @@ const DiariesSection: React.FC<DiariesSectionProps> = ({
               setName={setDiaryName}
               namePlaceholder="اسمك المستعار"
             />
+          ) : savedName ? (
+            <div className="grid md:grid-cols-2 gap-4 mb-4">
+              <SavedNameBadge name={savedName} onChange={handleChangeName} />
+              <div className="flex items-center gap-3 px-4 py-2 rounded-2xl bg-white/5 border border-white/5 mb-4">
+                <Sparkles size={20} className="text-yellow-400" />
+                <span className="text-xs text-white/40">شاركنا لحظاتك المميزة.</span>
+              </div>
+            </div>
           ) : (
             <div className="grid md:grid-cols-2 gap-4 mb-4">
               <input
@@ -338,11 +495,11 @@ const DiariesSection: React.FC<DiariesSectionProps> = ({
                 onChange={e => setDiaryName(e.target.value)}
                 placeholder="اسمك المستعار"
                 className="bg-black/40 border border-white/10 p-5 rounded-2xl text-white placeholder:text-white/20 font-bold"
-                maxLength={20}
+                maxLength={MAX_NICKNAME_LENGTH}
               />
               <div className="flex items-center gap-3 px-4 py-2 rounded-2xl bg-white/5 border border-white/5">
                 <Sparkles size={20} className="text-yellow-400" />
-                <span className="text-xs text-white/40">شاركنا لحظاتك المميزة.</span>
+                <span className="text-xs text-white/40">اختر اسمك مرة واحدة، وسنتذكره لك.</span>
               </div>
             </div>
           )}
@@ -355,7 +512,8 @@ const DiariesSection: React.FC<DiariesSectionProps> = ({
           />
           <button
             onClick={postDiaryEntry}
-            className="w-full md:w-auto px-12 py-5 bg-gradient-to-r from-cyan-500 to-purple-600 rounded-full font-black text-lg shadow-2xl shadow-cyan-500/20 hover:scale-[1.05] active:scale-95 transition-all flex items-center justify-center gap-3 float-left"
+            disabled={!diaryMsg.trim() || (needsName && !diaryName.trim())}
+            className="w-full md:w-auto px-12 py-5 bg-gradient-to-r from-cyan-500 to-purple-600 rounded-full font-black text-lg shadow-2xl shadow-cyan-500/20 hover:scale-[1.05] active:scale-95 transition-all flex items-center justify-center gap-3 float-left disabled:opacity-40 disabled:hover:scale-100"
           >
             نشر الآن <Send size={20} />
           </button>
