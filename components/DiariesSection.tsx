@@ -210,7 +210,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = React.memo(
       } else {
         const typed = name.trim();
         if (!typed) {
-          alert('اكتب اسمك المستعار أولاً، سيُحفظ مرة واحدة فقط.');
+          alert('اسمك؟.');
           return;
         }
         finalName = saveName(typed);
@@ -271,7 +271,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = React.memo(
                 setAsAdmin={setAsAdmin}
                 name={name}
                 setName={setName}
-                namePlaceholder="اسمك المستعار (اختياري)"
+                namePlaceholder="اسمك()"
               />
             )}
             {!isAdmin && savedName && (
@@ -281,7 +281,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = React.memo(
               <input
                 value={name}
                 onChange={e => setName(e.target.value)}
-                placeholder="اسمك المستعار (يُحفظ مرة واحدة)"
+                placeholder="اسمك )"
                 maxLength={MAX_NICKNAME_LENGTH}
                 className="w-full bg-black/40 border border-white/10 p-4 rounded-2xl mb-3 text-white placeholder:text-white/20 font-bold text-sm"
               />
@@ -362,7 +362,7 @@ const DiariesSection: React.FC<DiariesSectionProps> = ({
     } else {
       const typed = diaryName.trim();
       if (!typed) {
-        alert('اكتب اسمك المستعار أولاً، سيُحفظ مرة واحدة فقط.');
+        alert('اكتب اسمك.');
         return;
       }
       finalName = saveName(typed);
@@ -436,7 +436,7 @@ const DiariesSection: React.FC<DiariesSectionProps> = ({
   return (
     <section className={`${active ? 'block' : 'hidden'}`}>
       <h2 className="text-4xl font-black mb-12 mt-8 flex items-center gap-4">
-        <Users className="text-cyan-400" size={36} /> المجتمع الرقمي
+        <Users className="text-cyan-400" size={36} /> المساحة الحرة
       </h2>
 
       <div className="glass border border-white/10 p-8 rounded-[3rem] mb-12 shadow-2xl relative overflow-hidden">
@@ -448,7 +448,7 @@ const DiariesSection: React.FC<DiariesSectionProps> = ({
               setAsAdmin={setPostAsAdmin}
               name={diaryName}
               setName={setDiaryName}
-              namePlaceholder="اسمك المستعار"
+              namePlaceholder="اسمك "
             />
           ) : savedName ? (
             <div className="grid md:grid-cols-2 gap-4 mb-4">
@@ -469,7 +469,7 @@ const DiariesSection: React.FC<DiariesSectionProps> = ({
               />
               <div className="flex items-center gap-3 px-4 py-2 rounded-2xl bg-white/5 border border-white/5">
                 <Sparkles size={20} className="text-yellow-400" />
-                <span className="text-xs text-white/40">اختر اسمك مرة واحدة، وسنتذكره لك.</span>
+                <span className="text-xs text-white/40">اختر اسمك .</span>
               </div>
             </div>
           )}
