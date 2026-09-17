@@ -5,7 +5,9 @@ export default {
     "./App.tsx",
     "./index.tsx",
     "./types.ts",
-    "./firebase.ts"
+    "./firebase.ts",
+    "./components/**/*.{ts,tsx}",
+    "./hooks/**/*.{ts,tsx}"
   ],
   theme: {
     extend: {
