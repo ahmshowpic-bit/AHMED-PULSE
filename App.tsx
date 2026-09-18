@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
-  db, auth, googleProvider, ADMIN_EMAIL,
-  ref, onValue, push, update, runTransaction,
-  query, limitToLast, orderByKey, endBefore, get,
-  signInWithPopup, signOut, onAuthStateChanged, User
+  db,
+  ref, onValue, push, runTransaction,
+  query, limitToLast, orderByKey, endBefore, get
 } from './firebase';
 import { Song, DiaryPost, CustomPage, AppSettings, TabId } from './types';
 import { useVisitorId } from './hooks/useVisitorId';
@@ -17,7 +16,9 @@ import DiariesSection from './components/DiariesSection';
 import ContactSection from './components/ContactSection';
 import CustomPages from './components/CustomPages';
 import PlayerBar from './components/PlayerBar';
-import AdminModal from './components/AdminModal';
+
+// دالة فارغة مؤقتة لإرضاء خصائص الأدمن القديمة في Sidebar / MobileHeader (تُحذف بعد تنظيفهم)
+const noop = () => {};
 
 // حجم الدفعة الواحدة عند التحميل (توفير باقة الزائر)
 const PAGE_SIZE = 20;
@@ -25,9 +26,6 @@ const PAGE_SIZE = 20;
 const App: React.FC = () => {
   // State
   const [activeTab, setActiveTab] = useState<TabId>('home');
-  const [user, setUser] = useState<User | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [showAdminModal, setShowAdminModal] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [showOnlineMsg, setShowOnlineMsg] = useState(false);
@@ -177,11 +175,6 @@ const App: React.FC = () => {
       if (cachedPages) setCustomPages(JSON.parse(cachedPages));
     } catch (e) { console.warn("Error loading cache", e); }
 
-    const unsubAuth = onAuthStateChanged(auth, (u) => {
-      setUser(u);
-      setIsAdmin(u?.email === ADMIN_EMAIL);
-    });
-
     const unsubSettings = onValue(ref(db, 'settings'), (snap) => {
       if (snap.exists()) {
         const val = snap.val();
@@ -223,7 +216,6 @@ const App: React.FC = () => {
     }).catch((error) => console.warn("Pages access restricted:", error.message));
 
     return () => {
-      unsubAuth();
       unsubSettings();
       unsubMusic();
       unsubDiaries();
@@ -321,31 +313,8 @@ const App: React.FC = () => {
   const latestDiaries = useMemo(() => diaries.slice(0, 6), [diaries]);
 
   // Actions
-  const handleLogin = useCallback(async () => {
-    try {
-      const result = await signInWithPopup(auth, googleProvider);
-      if (result.user.email !== ADMIN_EMAIL) {
-        await signOut(auth);
-        alert("وصول مقيد للمسؤول فقط.");
-      }
-    } catch (e) {
-      console.error(e);
-      alert("فشل تسجيل الدخول. تأكد من إعدادات Firebase Authentication.");
-    }
-  }, []);
-
-  const openAdminModal = useCallback(() => setShowAdminModal(true), []);
-  const closeAdminModal = useCallback(() => setShowAdminModal(false), []);
-  const openAdminOrLogin = useCallback(() => {
-    if (isAdmin) setShowAdminModal(true); else handleLogin();
-  }, [isAdmin, handleLogin]);
-
   const addOptimisticDiary = useCallback((post: DiaryPost) => {
     setDiaries(prev => [post, ...prev]);
-  }, []);
-
-  const saveSettings = useCallback((payload: AppSettings) => {
-    return update(ref(db, 'settings'), payload).then(() => setSettings(payload));
   }, []);
 
   // Background Logic
@@ -388,8 +357,8 @@ const App: React.FC = () => {
         isOffline={isOffline}
         canInstall={!!deferredPrompt}
         onInstallClick={handleInstallClick}
-        isAdmin={isAdmin}
-        onOpenAdmin={openAdminModal}
+        isAdmin={false}
+        onOpenAdmin={noop}
         onLogoClick={() => setActiveTab('home')}
       />
 
@@ -398,11 +367,11 @@ const App: React.FC = () => {
         onTabChange={setActiveTab}
         customPages={customPages}
         isOffline={isOffline}
-        isAdmin={isAdmin}
+        isAdmin={false}
         visitorCount={settings.visitorCount}
         showVisitorCount={!!settings.showVisitorCount}
         visitorId={visitorId}
-        onShieldClick={openAdminOrLogin}
+        onShieldClick={noop}
       />
 
       {/* Main Content */}
@@ -418,7 +387,7 @@ const App: React.FC = () => {
             onGoToTab={setActiveTab}
             visitorCount={settings.visitorCount}
             showVisitorCount={!!settings.showVisitorCount}
-            isAdmin={isAdmin}
+            isAdmin={false}
             visitorId={visitorId}
           />
 
@@ -440,7 +409,7 @@ const App: React.FC = () => {
             hasMoreDiaries={hasMoreDiaries}
             loadingMore={loadingMore}
             onLoadMore={loadMoreDiaries}
-            isAdmin={isAdmin}
+            isAdmin={false}
             isOffline={isOffline}
             visitorId={visitorId}
             onOptimisticAdd={addOptimisticDiary}
@@ -449,8 +418,6 @@ const App: React.FC = () => {
           <ContactSection
             active={activeTab === 'contact'}
             isOffline={isOffline}
-            isAdmin={isAdmin}
-            onSecureClick={openAdminOrLogin}
             visitorId={visitorId}
           />
 
@@ -468,18 +435,6 @@ const App: React.FC = () => {
       />
 
       <MobileNav activeTab={activeTab} onTabChange={setActiveTab} />
-
-      {/* Admin Modal — لا يتم تركيبه في الشجرة أصلاً إلا وقت الفتح */}
-      {showAdminModal && (
-        <AdminModal
-          settings={settings}
-          songs={songs}
-          folders={folders}
-          customPages={customPages}
-          onClose={closeAdminModal}
-          onSaveSettings={saveSettings}
-        />
-      )}
 
       {/* Audio Element */}
       <audio
