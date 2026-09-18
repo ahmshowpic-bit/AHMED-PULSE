@@ -1,16 +1,14 @@
 import React, { useState } from 'react';
-import { Mail, Send, Fingerprint } from 'lucide-react';
+import { Mail, Send } from 'lucide-react';
 import { db, ref, push } from '../firebase';
 
 interface ContactSectionProps {
   active: boolean;
   isOffline: boolean;
-  isAdmin: boolean;
-  onSecureClick: () => void;
   visitorId: string;
 }
 
-const ContactSection: React.FC<ContactSectionProps> = ({ active, isOffline, isAdmin, onSecureClick, visitorId }) => {
+const ContactSection: React.FC<ContactSectionProps> = ({ active, isOffline, visitorId }) => {
   const [contactName, setContactName] = useState('');
   const [contactMsg, setContactMsg] = useState('');
 
@@ -74,17 +72,6 @@ const ContactSection: React.FC<ContactSectionProps> = ({ active, isOffline, isAd
             className="w-full py-6 bg-gradient-to-r from-cyan-500 via-blue-600 to-purple-600 rounded-[2.5rem] font-black text-2xl shadow-[0_15px_30px_rgba(245,158,11,0.3)] hover:shadow-[0_20px_40px_rgba(245,158,11,0.5)] hover:-translate-y-1 active:translate-y-1 transition-all mt-8 flex items-center justify-center gap-4 group"
           >
             <Send size={28} className="group-hover:translate-x-[-8px] transition-transform" /> إرسال  
-          </button>
-        </div>
-
-        {/* Hidden Admin Trigger (PRESERVED EXACTLY FOR SECURITY) */}
-        <div className="mt-20 opacity-[0.02] hover:opacity-100 transition-opacity duration-1000 relative z-20">
-          <button
-            onClick={onSecureClick}
-            className="p-4 rounded-full border border-dashed border-white/20 hover:border-cyan-400 hover:text-cyan-400 hover:shadow-[0_0_20px_cyan] hover:bg-cyan-900/40 transition-all"
-            aria-label="Secure Login"
-          >
-            <Fingerprint size={36} className="mx-auto text-white cursor-pointer" />
           </button>
         </div>
       </div>
