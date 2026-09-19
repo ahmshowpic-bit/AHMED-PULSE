@@ -1,5 +1,30 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { WifiOff, Download } from 'lucide-react';
+
+// يرجع true لو الموقع شغال جوه التطبيق المثبّت (APK / TWA / WebView / PWA)
+// عشان نخفي زر التحميل، ويرجع false في المتصفح العادي.
+const detectInstalledApp = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  try {
+    const displayModes = ['standalone', 'fullscreen', 'minimal-ui', 'window-controls-overlay'];
+    const inDisplayMode = displayModes.some(
+      (mode) => window.matchMedia(`(display-mode: ${mode})`).matches
+    );
+    const iosStandalone =
+      (navigator as Navigator & { standalone?: boolean }).standalone === true;
+    const fromAndroidApp = document.referrer.startsWith('android-app://');
+    const capacitor = !!(
+      window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } }
+    ).Capacitor?.isNativePlatform?.();
+    const ua = navigator.userAgent;
+    const inAppBrowser = /FBAN|FBAV|Instagram|Line\/|Twitter|Snapchat|TikTok/i.test(ua);
+    const androidWebView = /; wv\)/.test(ua) && !inAppBrowser;
+
+    return inDisplayMode || iosStandalone || fromAndroidApp || capacitor || androidWebView;
+  } catch {
+    return false;
+  }
+};
 
 interface MobileHeaderProps {
   isOffline: boolean;
@@ -7,6 +32,9 @@ interface MobileHeaderProps {
 }
 
 const MobileHeader: React.FC<MobileHeaderProps> = ({ isOffline, onLogoClick }) => {
+  // بيتحسب مرة واحدة عند أول عرض
+  const [isInstalledApp] = useState<boolean>(detectInstalledApp);
+
   return (
     <header className="md:hidden fixed top-0 left-0 right-0 z-50 grid grid-cols-3 items-center px-6 py-4 bg-black/40 backdrop-blur-2xl border-b border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
       <div className="justify-self-start" />
@@ -105,14 +133,16 @@ const MobileHeader: React.FC<MobileHeaderProps> = ({ isOffline, onLogoClick }) =
         </div>
       </div>
       <div className="justify-self-end flex items-center gap-3">
-        <a
-          href="/app.apk"
-          download="AhmedPulse.apk"
-          aria-label="Download Android app"
-          className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-r from-purple-500 to-cyan-500 text-white shadow-[0_0_15px_rgba(245,158,11,0.5)] animate-pulse hover:scale-110 transition-transform"
-        >
-          <Download size={18} />
-        </a>
+        {!isInstalledApp && (
+          <a
+            href="/app.apk"
+            download="AhmedPulse.apk"
+            aria-label="Download Android app"
+            className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-r from-purple-500 to-cyan-500 text-white shadow-[0_0_15px_rgba(245,158,11,0.5)] animate-pulse hover:scale-110 transition-transform"
+          >
+            <Download size={18} />
+          </a>
+        )}
       </div>
     </header>
   );
