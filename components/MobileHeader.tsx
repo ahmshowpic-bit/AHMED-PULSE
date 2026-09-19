@@ -21,50 +21,59 @@ const MobileHeader: React.FC<MobileHeaderProps> = ({ isOffline, canInstall, onIn
         ) : (
           <Zap className="text-amber-400" size={24} />
         )}
-        <svg
-          viewBox="0 0 132 30"
-          xmlns="http://www.w3.org/2000/svg"
-          style={{ width: 'clamp(96px, 32vw, 150px)', height: 'auto' }}
-          preserveAspectRatio="xMidYMid meet"
+        <div
+          style={{
+            width: 'clamp(96px, 32vw, 150px)',
+            aspectRatio: '132 / 30',
+            flexShrink: 0,
+          }}
         >
-          <defs>
-            <linearGradient id="apulse-logo-gradient" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor="#fcd34d" />
-              <stop offset="50%" stopColor="#f59e0b" />
-              <stop offset="100%" stopColor="#d97706" />
-            </linearGradient>
-          </defs>
-          <text
-            x="0"
-            y="23"
-            fontFamily="Arial, Helvetica, sans-serif"
-            fontWeight="900"
-            fontSize="24"
-            fill="url(#apulse-logo-gradient)"
-            letterSpacing="-0.5"
+          <svg
+            viewBox="0 0 132 30"
+            xmlns="http://www.w3.org/2000/svg"
+            width="100%"
+            height="100%"
+            preserveAspectRatio="xMidYMid meet"
           >
-            A
-          </text>
-          <polyline
-            points="20,15 27,15 30,6 35,24 39,10 43,15 51,15"
-            fill="none"
-            stroke="url(#apulse-logo-gradient)"
-            strokeWidth="2"
-            strokeLinejoin="round"
-            strokeLinecap="round"
-          />
-          <text
-            x="55"
-            y="23"
-            fontFamily="Arial, Helvetica, sans-serif"
-            fontWeight="900"
-            fontSize="24"
-            fill="url(#apulse-logo-gradient)"
-            letterSpacing="-0.5"
-          >
-            PULSE
-          </text>
-        </svg>
+            <defs>
+              <linearGradient id="apulse-logo-gradient" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stopColor="#fcd34d" />
+                <stop offset="50%" stopColor="#f59e0b" />
+                <stop offset="100%" stopColor="#d97706" />
+              </linearGradient>
+            </defs>
+            <text
+              x="0"
+              y="23"
+              fontFamily="Arial, Helvetica, sans-serif"
+              fontWeight="900"
+              fontSize="24"
+              fill="url(#apulse-logo-gradient)"
+              letterSpacing="-0.5"
+            >
+              A
+            </text>
+            <polyline
+              points="20,15 27,15 30,6 35,24 39,10 43,15 51,15"
+              fill="none"
+              stroke="url(#apulse-logo-gradient)"
+              strokeWidth="2"
+              strokeLinejoin="round"
+              strokeLinecap="round"
+            />
+            <text
+              x="55"
+              y="23"
+              fontFamily="Arial, Helvetica, sans-serif"
+              fontWeight="900"
+              fontSize="24"
+              fill="url(#apulse-logo-gradient)"
+              letterSpacing="-0.5"
+            >
+              PULSE
+            </text>
+          </svg>
+        </div>
       </div>
       <div className="justify-self-end flex items-center gap-3">
         {canInstall && (
