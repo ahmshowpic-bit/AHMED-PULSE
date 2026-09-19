@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, Music as MusicIcon, Users, Mail, Shield, WifiOff, Zap, MoreHorizontal } from 'lucide-react';
+import { Home, Music as MusicIcon, Users, Mail, WifiOff, Zap, MoreHorizontal } from 'lucide-react';
 import { CustomPage, TabId } from '../types';
 import VisitorBadge from './VisitorBadge';
 import VisitorIdentity from './VisitorIdentity';
@@ -20,16 +20,14 @@ interface SidebarProps {
   onTabChange: (tab: TabId) => void;
   customPages: CustomPage[];
   isOffline: boolean;
-  isAdmin: boolean;
   visitorCount: number;
   showVisitorCount: boolean;
   visitorId: string;
-  onShieldClick: () => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
-  activeTab, onTabChange, customPages, isOffline, isAdmin,
-  visitorCount, showVisitorCount, visitorId, onShieldClick
+  activeTab, onTabChange, customPages, isOffline,
+  visitorCount, showVisitorCount, visitorId
 }) => {
   return (
     <aside className="hidden md:flex w-[280px] bg-black/40 backdrop-blur-2xl border-l border-white/5 z-50 flex-col p-8 transition-all shadow-[-20px_0_40px_rgba(0,0,0,0.5)] relative">
@@ -50,7 +48,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       <div className="mb-4">
-        <VisitorBadge count={visitorCount} visible={showVisitorCount || isAdmin} />
+        <VisitorBadge count={visitorCount} visible={showVisitorCount} />
       </div>
       <div className="mb-8">
         <VisitorIdentity visitorId={visitorId} />
@@ -72,19 +70,10 @@ const Sidebar: React.FC<SidebarProps> = ({
           />
         ))}
       </nav>
-
-      <div className="mt-auto flex justify-center pt-4">
-        <button
-          onClick={onShieldClick}
-          className="text-white/20 hover:text-cyan-400 transition-colors duration-300"
-        >
-          <Shield size={24} />
-        </button>
-      </div>
     </aside>
   );
 };
 
 // مغلف بـ React.memo: يعيد الرسم فقط لو تغيّرت الخصائص الفعلية
-// (تبديل تبويب، دخول أدمن...)، وليس مع كل نبضة تشغيل أغنية.
+// (تبديل تبويب...)، وليس مع كل نبضة تشغيل أغنية.
 export default React.memo(Sidebar);
