@@ -1,6 +1,5 @@
 import { initializeApp } from "firebase/app";
 import { getDatabase, ref, onValue, push, set, update, remove, runTransaction, query, limitToLast, orderByKey, endBefore, get } from "firebase/database";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, User } from "firebase/auth";
 
 // تعريف واحد فقط يستخدم متغيرات البيئة (Environment Variables)
 const firebaseConfig = {
@@ -16,11 +15,6 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const db = getDatabase(app);
-export const auth = getAuth(app);
-export const googleProvider = new GoogleAuthProvider();
 
-// قراءة البريد الإلكتروني للمدير من ملف البيئة
-export const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
-
-export { ref, onValue, push, set, update, remove, runTransaction, query, limitToLast, orderByKey, endBefore, get, signInWithPopup, signOut, onAuthStateChanged };
-export type { User };
+// الموقع الأصلي للزوار فقط: مفيش تسجيل دخول ولا أدمن هنا (الإدارة في لوحة التحكم المنفصلة)
+export { ref, onValue, push, set, update, remove, runTransaction, query, limitToLast, orderByKey, endBefore, get };
