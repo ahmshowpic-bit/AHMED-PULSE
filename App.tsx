@@ -23,7 +23,6 @@ const PAGE_SIZE = 20;
 const App: React.FC = () => {
   // State
   const [activeTab, setActiveTab] = useState<TabId>('home');
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [showOnlineMsg, setShowOnlineMsg] = useState(false);
 
@@ -138,23 +137,6 @@ const App: React.FC = () => {
       }, 3000);
     }
   }, [isOffline]);
-
-  // Install Prompt Listener
-  useEffect(() => {
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-    });
-  }, []);
-
-  const handleInstallClick = useCallback(async () => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') {
-      setDeferredPrompt(null);
-    }
-  }, [deferredPrompt]);
 
   // Firebase Listeners
   useEffect(() => {
@@ -352,8 +334,6 @@ const App: React.FC = () => {
 
       <MobileHeader
         isOffline={isOffline}
-        canInstall={!!deferredPrompt}
-        onInstallClick={handleInstallClick}
         onLogoClick={() => setActiveTab('home')}
       />
 
