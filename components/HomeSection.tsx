@@ -14,13 +14,12 @@ interface HomeSectionProps {
   onGoToTab: (tab: TabId) => void;
   visitorCount: number;
   showVisitorCount: boolean;
-  isAdmin: boolean;
   visitorId: string;
 }
 
 const HomeSection: React.FC<HomeSectionProps> = ({
   active, welcome, heroSong, featuredSongs, latestDiaries,
-  onPlaySong, onGoToTab, visitorCount, showVisitorCount, isAdmin, visitorId
+  onPlaySong, onGoToTab, visitorCount, showVisitorCount, visitorId
 }) => {
   return (
     <section className={`${active ? 'block' : 'hidden'} animate-fade-in`}>
@@ -72,7 +71,7 @@ const HomeSection: React.FC<HomeSectionProps> = ({
         )}
 
         <div className="md:hidden mt-16 w-full max-w-sm px-4 space-y-4">
-          <VisitorBadge count={visitorCount} visible={showVisitorCount || isAdmin} />
+          <VisitorBadge count={visitorCount} visible={showVisitorCount} />
           <VisitorIdentity visitorId={visitorId} />
         </div>
       </div>
