@@ -14,14 +14,57 @@ const MobileHeader: React.FC<MobileHeaderProps> = ({ isOffline, canInstall, onIn
       <div className="justify-self-start" />
       <div
         onClick={onLogoClick}
-        className="justify-self-center text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 tracking-tighter cursor-pointer active:scale-95 transition-transform flex items-center gap-2 drop-shadow-lg"
+        className="justify-self-center cursor-pointer active:scale-95 transition-transform flex items-center gap-2 drop-shadow-lg"
       >
         {isOffline ? (
           <WifiOff className="text-red-400" size={24} />
         ) : (
-          <Zap className="text-cyan-400" size={24} />
+          <Zap className="text-amber-400" size={24} />
         )}
-        AHMED PULSE
+        <svg
+          viewBox="0 0 132 30"
+          xmlns="http://www.w3.org/2000/svg"
+          style={{ width: 'clamp(96px, 32vw, 150px)', height: 'auto' }}
+          preserveAspectRatio="xMidYMid meet"
+        >
+          <defs>
+            <linearGradient id="apulse-logo-gradient" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stopColor="#fcd34d" />
+              <stop offset="50%" stopColor="#f59e0b" />
+              <stop offset="100%" stopColor="#d97706" />
+            </linearGradient>
+          </defs>
+          <text
+            x="0"
+            y="23"
+            fontFamily="Arial, Helvetica, sans-serif"
+            fontWeight="900"
+            fontSize="24"
+            fill="url(#apulse-logo-gradient)"
+            letterSpacing="-0.5"
+          >
+            A
+          </text>
+          <polyline
+            points="20,15 27,15 30,6 35,24 39,10 43,15 51,15"
+            fill="none"
+            stroke="url(#apulse-logo-gradient)"
+            strokeWidth="2"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+          />
+          <text
+            x="55"
+            y="23"
+            fontFamily="Arial, Helvetica, sans-serif"
+            fontWeight="900"
+            fontSize="24"
+            fill="url(#apulse-logo-gradient)"
+            letterSpacing="-0.5"
+          >
+            PULSE
+          </text>
+        </svg>
       </div>
       <div className="justify-self-end flex items-center gap-3">
         {canInstall && (
