@@ -17,9 +17,6 @@ import ContactSection from './components/ContactSection';
 import CustomPages from './components/CustomPages';
 import PlayerBar from './components/PlayerBar';
 
-// دالة فارغة مؤقتة لإرضاء خصائص الأدمن القديمة في Sidebar / MobileHeader (تُحذف بعد تنظيفهم)
-const noop = () => {};
-
 // حجم الدفعة الواحدة عند التحميل (توفير باقة الزائر)
 const PAGE_SIZE = 20;
 
@@ -357,8 +354,6 @@ const App: React.FC = () => {
         isOffline={isOffline}
         canInstall={!!deferredPrompt}
         onInstallClick={handleInstallClick}
-        isAdmin={false}
-        onOpenAdmin={noop}
         onLogoClick={() => setActiveTab('home')}
       />
 
@@ -367,11 +362,9 @@ const App: React.FC = () => {
         onTabChange={setActiveTab}
         customPages={customPages}
         isOffline={isOffline}
-        isAdmin={false}
         visitorCount={settings.visitorCount}
         showVisitorCount={!!settings.showVisitorCount}
         visitorId={visitorId}
-        onShieldClick={noop}
       />
 
       {/* Main Content */}
@@ -387,7 +380,6 @@ const App: React.FC = () => {
             onGoToTab={setActiveTab}
             visitorCount={settings.visitorCount}
             showVisitorCount={!!settings.showVisitorCount}
-            isAdmin={false}
             visitorId={visitorId}
           />
 
@@ -409,7 +401,6 @@ const App: React.FC = () => {
             hasMoreDiaries={hasMoreDiaries}
             loadingMore={loadingMore}
             onLoadMore={loadMoreDiaries}
-            isAdmin={false}
             isOffline={isOffline}
             visitorId={visitorId}
             onOptimisticAdd={addOptimisticDiary}
