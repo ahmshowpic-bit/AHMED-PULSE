@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useMemo, useEffect, useSyncExternalStore } from 'react';
-import { Users, Sparkles, Send, CheckCircle, Heart, Trash2, MessageCircle, ChevronDown, ChevronUp, ShieldCheck, UserRound } from 'lucide-react';
+import { Users, Sparkles, Send, CheckCircle, Heart, MessageCircle, ChevronDown, ChevronUp, UserRound } from 'lucide-react';
 import { DiaryPost } from '../types';
-import { db, ref, push, set, remove, runTransaction } from '../firebase';
+import { db, ref, push, set, runTransaction } from '../firebase';
 
 /**
  * ملاحظة: النوعان أدناه يوسّعان DiaryPost بحقول likedBy و comments.
@@ -32,7 +32,6 @@ interface DiariesSectionProps {
   hasMoreDiaries: boolean;
   loadingMore: boolean;
   onLoadMore: () => void;
-  isAdmin: boolean;
   isOffline: boolean;
   visitorId: string;
   onOptimisticAdd: (post: DiaryPost) => void;
@@ -122,75 +121,25 @@ const SavedNameBadge: React.FC<SavedNameBadgeProps> = React.memo(({ name, compac
 SavedNameBadge.displayName = 'SavedNameBadge';
 
 /* -------------------------------------------------------------------------- */
-/* مكوّن صغير: اختيار هوية النشر للمدير فقط (كمسؤول أو كزائر باسم اختياري)     */
-/* -------------------------------------------------------------------------- */
-interface AdminIdentityToggleProps {
-  asAdmin: boolean;
-  setAsAdmin: (v: boolean) => void;
-  name: string;
-  setName: (v: string) => void;
-  namePlaceholder: string;
-}
-
-const AdminIdentityToggle: React.FC<AdminIdentityToggleProps> = React.memo(
-  ({ asAdmin, setAsAdmin, name, setName, namePlaceholder }) => (
-    <div className="flex flex-col gap-3 mb-4">
-      <div className="flex items-center gap-2 p-1 rounded-2xl bg-black/40 border border-white/10 w-fit">
-        <button
-          type="button"
-          onClick={() => setAsAdmin(true)}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-black transition-all ${
-            asAdmin ? 'bg-cyan-500 text-black' : 'text-white/40 hover:text-white'
-          }`}
-        >
-          <ShieldCheck size={16} /> نشر كمسؤول
-        </button>
-        <button
-          type="button"
-          onClick={() => setAsAdmin(false)}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-black transition-all ${
-            !asAdmin ? 'bg-white text-black' : 'text-white/40 hover:text-white'
-          }`}
-        >
-          <UserRound size={16} /> نشر كزائر
-        </button>
-      </div>
-      {!asAdmin && (
-        <input
-          value={name}
-          onChange={e => setName(e.target.value)}
-          placeholder={namePlaceholder}
-          maxLength={MAX_NICKNAME_LENGTH}
-          className="bg-black/40 border border-white/10 p-4 rounded-2xl text-white placeholder:text-white/20 font-bold text-sm"
-        />
-      )}
-    </div>
-  )
-);
-AdminIdentityToggle.displayName = 'AdminIdentityToggle';
-
-/* -------------------------------------------------------------------------- */
 /* مكوّن صغير: قسم التعليقات لكل منشور - حالته المحلية معزولة عن باقي القائمة  */
 /* -------------------------------------------------------------------------- */
 interface CommentsSectionProps {
   postId: string;
   comments?: CommentsMap;
-  isAdmin: boolean;
   isOffline: boolean;
   visitorId: string;
 }
 
 const CommentsSection: React.FC<CommentsSectionProps> = React.memo(
-  ({ postId, comments, isAdmin, isOffline, visitorId }) => {
+  ({ postId, comments, isOffline, visitorId }) => {
     const { savedName, saveName } = useVisitorNickname();
     const [open, setOpen] = useState(false);
     const [text, setText] = useState('');
     const [name, setName] = useState('');
-    const [asAdmin, setAsAdmin] = useState(true);
     const [submitting, setSubmitting] = useState(false);
 
     // الزائر العادي يُطلب منه الاسم مرة واحدة فقط؛ بعدها يُخفى الحقل نهائياً
-    const needsName = !isAdmin && !savedName;
+    const needsName = !savedName;
 
     const commentList = useMemo(() => {
       if (!comments) return [];
@@ -203,9 +152,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = React.memo(
       if (!text.trim() || submitting) return;
 
       let finalName: string;
-      if (isAdmin) {
-        finalName = asAdmin ? 'AHMED PULSE' : name.trim() || 'مجهول';
-      } else if (savedName) {
+      if (savedName) {
         finalName = savedName;
       } else {
         const typed = name.trim();
@@ -216,12 +163,10 @@ const CommentsSection: React.FC<CommentsSectionProps> = React.memo(
         finalName = saveName(typed);
       }
 
-      const finalVerified = isAdmin && asAdmin;
-
       const commentData: DiaryComment = {
         name: finalName,
         text: text.trim(),
-        verified: finalVerified,
+        verified: false,
         date: new Date().toLocaleDateString('ar-EG'),
         visitorId,
       };
@@ -248,7 +193,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = React.memo(
           alert('فشل إرسال التعليق. يرجى المحاولة مرة أخرى.');
         })
         .finally(() => setSubmitting(false));
-    }, [text, submitting, isAdmin, asAdmin, name, savedName, saveName, isOffline, postId, visitorId]);
+    }, [text, submitting, name, savedName, saveName, isOffline, postId, visitorId]);
 
     return (
       <div className="border-t border-white/5">
@@ -265,16 +210,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = React.memo(
 
         {open && (
           <div className="px-8 pb-8">
-            {isAdmin && (
-              <AdminIdentityToggle
-                asAdmin={asAdmin}
-                setAsAdmin={setAsAdmin}
-                name={name}
-                setName={setName}
-                namePlaceholder="اسمك()"
-              />
-            )}
-            {!isAdmin && savedName && (
+            {savedName && (
               <SavedNameBadge name={savedName} compact />
             )}
             {needsName && (
@@ -342,22 +278,19 @@ CommentsSection.displayName = 'CommentsSection';
 /* المكوّن الرئيسي                                                            */
 /* -------------------------------------------------------------------------- */
 const DiariesSection: React.FC<DiariesSectionProps> = ({
-  active, diaries, hasMoreDiaries, loadingMore, onLoadMore, isAdmin, isOffline, visitorId, onOptimisticAdd
+  active, diaries, hasMoreDiaries, loadingMore, onLoadMore, isOffline, visitorId, onOptimisticAdd
 }) => {
   const { savedName, saveName } = useVisitorNickname();
   const [diaryName, setDiaryName] = useState('');
   const [diaryMsg, setDiaryMsg] = useState('');
-  const [postAsAdmin, setPostAsAdmin] = useState(true);
 
-  const needsName = !isAdmin && !savedName;
+  const needsName = !savedName;
 
   const postDiaryEntry = useCallback(() => {
     if (!diaryMsg.trim()) return;
 
     let finalName: string;
-    if (isAdmin) {
-      finalName = postAsAdmin ? 'AHMED PULSE' : diaryName.trim() || 'مجهول';
-    } else if (savedName) {
+    if (savedName) {
       finalName = savedName;
     } else {
       const typed = diaryName.trim();
@@ -368,12 +301,10 @@ const DiariesSection: React.FC<DiariesSectionProps> = ({
       finalName = saveName(typed);
     }
 
-    const finalVerified = isAdmin && postAsAdmin;
-
     const postData: any = {
       name: finalName,
       text: diaryMsg,
-      verified: finalVerified,
+      verified: false,
       date: new Date().toLocaleDateString('ar-EG'),
       likes: 0,
       visitorId,
@@ -399,7 +330,7 @@ const DiariesSection: React.FC<DiariesSectionProps> = ({
       alert('فشل النشر. يرجى التأكد من صلاحيات قاعدة البيانات.');
     });
     setDiaryMsg('');
-  }, [diaryMsg, diaryName, savedName, saveName, isAdmin, postAsAdmin, isOffline, visitorId, onOptimisticAdd]);
+  }, [diaryMsg, diaryName, savedName, saveName, isOffline, visitorId, onOptimisticAdd]);
 
   const toggleLike = useCallback((post: ExtendedDiaryPost) => {
     if (isOffline) {
@@ -409,15 +340,7 @@ const DiariesSection: React.FC<DiariesSectionProps> = ({
 
     const likesRef = ref(db, `diaries/${post.id}/likes`);
 
-    // المدير يتجاوز فحص visitorId ويزيد العداد بحرية بكل ضغطة
-    if (isAdmin) {
-      runTransaction(likesRef, (likes: number | null) => (likes || 0) + 1).catch((err: any) => {
-        console.warn('Admin like failed:', err?.message);
-      });
-      return;
-    }
-
-    // الزائر العادي: إعجاب واحد فقط لكل منشور، والضغط مجدداً يلغي الإعجاب
+    // إعجاب واحد فقط لكل منشور، والضغط مجدداً يلغي الإعجاب
     const likedByRef = ref(db, `diaries/${post.id}/likedBy/${visitorId}`);
     runTransaction(likedByRef, (current: boolean | null) => (current ? null : true))
       .then((result: any) => {
@@ -431,7 +354,7 @@ const DiariesSection: React.FC<DiariesSectionProps> = ({
       .catch((err: any) => {
         console.warn('Like failed:', err?.message);
       });
-  }, [isAdmin, isOffline, visitorId]);
+  }, [isOffline, visitorId]);
 
   return (
     <section className={`${active ? 'block' : 'hidden'}`}>
@@ -442,15 +365,7 @@ const DiariesSection: React.FC<DiariesSectionProps> = ({
       <div className="glass border border-white/10 p-8 rounded-[3rem] mb-12 shadow-2xl relative overflow-hidden">
         <div className="absolute -top-10 -left-10 w-40 h-40 bg-cyan-500/10 blur-[60px] rounded-full" />
         <div className="relative z-10">
-          {isAdmin ? (
-            <AdminIdentityToggle
-              asAdmin={postAsAdmin}
-              setAsAdmin={setPostAsAdmin}
-              name={diaryName}
-              setName={setDiaryName}
-              namePlaceholder="اسمك "
-            />
-          ) : savedName ? (
+          {savedName ? (
             <div className="grid md:grid-cols-2 gap-4 mb-4">
               <SavedNameBadge name={savedName} />
               <div className="flex items-center gap-3 px-4 py-2 rounded-2xl bg-white/5 border border-white/5 mb-4">
@@ -495,7 +410,7 @@ const DiariesSection: React.FC<DiariesSectionProps> = ({
         {diaries.length === 0 && <div className="text-center text-white/20 py-20 text-xl font-bold">المجتمع بانتظار مشاركتك الأولى...</div>}
         {diaries.map(post => {
           const extendedPost = post as ExtendedDiaryPost;
-          const liked = isAdmin ? false : !!extendedPost.likedBy?.[visitorId];
+          const liked = !!extendedPost.likedBy?.[visitorId];
           return (
             <div
               key={post.id}
@@ -511,14 +426,6 @@ const DiariesSection: React.FC<DiariesSectionProps> = ({
                   </div>
                   <div className="text-xs text-white/30 font-medium">{post.date}</div>
                 </div>
-                {isAdmin && (
-                  <button
-                    onClick={() => remove(ref(db, `diaries/${post.id}`)).catch(e => console.error(e))}
-                    className="w-10 h-10 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all"
-                  >
-                    <Trash2 size={18} />
-                  </button>
-                )}
               </div>
               <div className="p-8 text-white/80 text-lg leading-relaxed whitespace-pre-wrap">{post.text}</div>
               <div className="p-4 bg-black/10 border-t border-white/5 px-8 flex justify-between items-center">
@@ -533,7 +440,6 @@ const DiariesSection: React.FC<DiariesSectionProps> = ({
               <CommentsSection
                 postId={post.id}
                 comments={extendedPost.comments}
-                isAdmin={isAdmin}
                 isOffline={isOffline}
                 visitorId={visitorId}
               />
