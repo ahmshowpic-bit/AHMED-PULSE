@@ -14,28 +14,60 @@ const MobileHeader: React.FC<MobileHeaderProps> = ({ isOffline, canInstall, onIn
       <div className="justify-self-start" />
       <div
         onClick={onLogoClick}
-        className="justify-self-center cursor-pointer active:scale-95 transition-transform flex items-center gap-1.5 drop-shadow-lg min-w-0"
+        dir="ltr"
+        className="justify-self-center cursor-pointer active:scale-95 transition-transform flex items-center gap-1.5 min-w-0"
       >
         {isOffline ? (
-          <WifiOff className="text-red-400 shrink-0" size={22} />
+          <WifiOff className="text-red-400 shrink-0" size={18} />
         ) : (
-          <Zap className="text-amber-400 shrink-0" size={22} />
+          <Zap className="text-amber-400 shrink-0" size={18} />
         )}
-        <span className="flex items-center gap-[0.15em] text-xl sm:text-2xl font-black tracking-tighter text-amber-400 whitespace-nowrap leading-none">
-          <span>A</span>
-          <svg
-            viewBox="0 0 24 24"
-            className="w-[0.55em] h-[0.55em] shrink-0"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+        <svg
+          width="86"
+          height="52"
+          viewBox="0 0 86 52"
+          xmlns="http://www.w3.org/2000/svg"
+          className="shrink-0 drop-shadow-[0_0_10px_rgba(251,191,36,0.55)]"
+        >
+          <defs>
+            <linearGradient id="apulse-mark-gradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#fde68a" />
+              <stop offset="45%" stopColor="#f59e0b" />
+              <stop offset="100%" stopColor="#c2410c" />
+            </linearGradient>
+          </defs>
+          <text
+            x="43"
+            y="34"
+            textAnchor="middle"
+            fontFamily="Arial, Helvetica, sans-serif"
+            fontWeight="900"
+            fontSize="38"
+            fill="url(#apulse-mark-gradient)"
           >
-            <polyline points="1,12 5,12 8,4 13,20 16,7 18,12 23,12" />
-          </svg>
-          <span>PULSE</span>
-        </span>
+            A
+          </text>
+          <polyline
+            points="20,22 27,22 30,15 35,29 39,18 43,22 47,15 51,29 55,18 59,22 66,22"
+            fill="none"
+            stroke="#1c1006"
+            strokeWidth="2.4"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+          />
+          <text
+            x="43"
+            y="47"
+            textAnchor="middle"
+            fontFamily="Arial, Helvetica, sans-serif"
+            fontWeight="700"
+            fontSize="11"
+            letterSpacing="3"
+            fill="url(#apulse-mark-gradient)"
+          >
+            PULSE
+          </text>
+        </svg>
       </div>
       <div className="justify-self-end flex items-center gap-3">
         {canInstall && (
