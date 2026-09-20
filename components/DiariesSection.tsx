@@ -427,7 +427,7 @@ const DiariesSection: React.FC<DiariesSectionProps> = ({
                   <div className="text-xs text-white/30 font-medium">{post.date}</div>
                 </div>
               </div>
-              <div className="p-8 text-white/80 text-lg leading-relaxed whitespace-pre-wrap">{post.text}</div>
+              <div className="p-8 bg-black/85 backdrop-blur-sm border-t border-white/5 text-white text-lg leading-relaxed whitespace-pre-wrap break-words">{post.text}</div>
               <div className="p-4 bg-black/10 border-t border-white/5 px-8 flex justify-between items-center">
                 <button
                   onClick={() => toggleLike(extendedPost)}
