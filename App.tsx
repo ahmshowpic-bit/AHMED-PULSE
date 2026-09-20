@@ -258,6 +258,17 @@ const App: React.FC = () => {
     navigator.mediaSession.setActionHandler('nexttrack', () => nextSong());
 
     navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+
+    // يبعت نفس المعلومات للتطبيق الأصلي (Android) لو شغال جوه الغلاف الذكي،
+    // عشان يحدّث إشعار التشغيل وشاشة القفل
+    (window as any).AndroidBridge?.updateNowPlaying(
+      currentSong.name,
+      currentSong.folder || 'AHMED PULSE',
+      currentSong.image,
+      isPlaying,
+      Math.floor((audioRef.current?.currentTime || 0) * 1000),
+      Math.floor((audioRef.current?.duration || 0) * 1000)
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentSong, isPlaying]);
 
@@ -276,6 +287,16 @@ const App: React.FC = () => {
     const prevIndex = (currentIndex - 1 + playlist.length) % playlist.length;
     playSong(playlist[prevIndex], playlist);
   }, [currentSong, playlist, playSong]);
+
+  // يسجّل دوال التحكم اللي التطبيق الأصلي (إشعار/شاشة قفل) هينادي عليها
+  useEffect(() => {
+    (window as any).AndroidPlayer = {
+      play: () => { if (!isPlaying) togglePlay(); },
+      pause: () => { if (isPlaying) togglePlay(); },
+      next: () => nextSong(),
+      previous: () => prevSong(),
+    };
+  }, [isPlaying, togglePlay, nextSong, prevSong]);
 
   // Grouped Songs by Folder
   const folders = useMemo(() => {
