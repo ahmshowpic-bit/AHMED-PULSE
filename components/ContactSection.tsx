@@ -36,7 +36,7 @@ const ContactSection: React.FC<ContactSectionProps> = ({ active, isOffline, visi
   };
 
   return (
-    <section className={`${active ? 'block' : 'hidden'} animate-fade-in-up`}>
+    <section className={`${active ? 'block bg-black px-2 py-4 md:p-8 shadow-[0_0_0_100vmax_#000] [clip-path:inset(0_-100vmax)]' : 'hidden'} animate-fade-in-up`}>
       <div className="max-w-3xl mx-auto bg-black/50 backdrop-blur-2xl border border-white/10 p-8 md:p-16 rounded-[4rem] text-center shadow-[0_20px_60px_rgba(0,0,0,0.8)] mt-12 relative overflow-hidden">
         <div className="absolute top-0 left-0 w-64 h-64 bg-cyan-500/20 blur-[100px] rounded-full pointer-events-none" />
         <div className="absolute bottom-0 right-0 w-64 h-64 bg-purple-500/10 blur-[100px] rounded-full pointer-events-none" />
