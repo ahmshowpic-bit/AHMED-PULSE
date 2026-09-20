@@ -357,12 +357,12 @@ const DiariesSection: React.FC<DiariesSectionProps> = ({
   }, [isOffline, visitorId]);
 
   return (
-    <section className={`${active ? 'block bg-black rounded-[3rem] p-4 md:p-8' : 'hidden'}`}>
-      <h2 className="text-4xl font-black mb-12 mt-8 flex items-center gap-4">
+    <section className={`${active ? 'block bg-black px-2 py-4 md:p-8 shadow-[0_0_0_100vmax_#000] [clip-path:inset(0_-100vmax)]' : 'hidden'}`}>
+      <h2 className="text-3xl md:text-4xl font-black mb-6 md:mb-12 mt-4 md:mt-8 flex items-center gap-4">
         <Users className="text-cyan-400" size={36} /> المساحة الحرة
       </h2>
 
-      <div className="glass border border-white/10 p-8 rounded-[3rem] mb-12 shadow-2xl relative overflow-hidden">
+      <div className="glass border border-white/10 p-4 sm:p-8 rounded-[1.75rem] sm:rounded-[3rem] mb-6 sm:mb-12 shadow-2xl relative overflow-hidden">
         <div className="absolute -top-10 -left-10 w-40 h-40 bg-cyan-500/10 blur-[60px] rounded-full" />
         <div className="relative z-10">
           {savedName ? (
@@ -392,8 +392,8 @@ const DiariesSection: React.FC<DiariesSectionProps> = ({
             value={diaryMsg}
             onChange={e => setDiaryMsg(e.target.value)}
             placeholder="ما الذي يدور في ذهنك اليوم؟"
-            rows={4}
-            className="w-full bg-black/40 border border-white/10 p-6 rounded-[2rem] mb-6 text-white placeholder:text-white/20 resize-none text-lg leading-relaxed"
+            rows={3}
+            className="w-full bg-black/40 border border-white/10 p-4 sm:p-6 rounded-[1.5rem] sm:rounded-[2rem] mb-4 sm:mb-6 text-white placeholder:text-white/20 resize-none text-base sm:text-lg leading-relaxed"
           />
           <button
             onClick={postDiaryEntry}
@@ -406,7 +406,7 @@ const DiariesSection: React.FC<DiariesSectionProps> = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-8">
+      <div className="grid grid-cols-1 gap-4 sm:gap-8">
         {diaries.length === 0 && <div className="text-center text-white/20 py-20 text-xl font-bold">المجتمع بانتظار مشاركتك الأولى...</div>}
         {diaries.map(post => {
           const extendedPost = post as ExtendedDiaryPost;
@@ -414,10 +414,10 @@ const DiariesSection: React.FC<DiariesSectionProps> = ({
           return (
             <div
               key={post.id}
-              className={`rounded-[2.5rem] border border-white/10 overflow-hidden shadow-xl transition-all hover:border-white/20 ${post.verified ? 'bg-gradient-to-br from-cyan-900/20 to-black/40 border-cyan-500/30 ring-1 ring-cyan-500/10' : 'bg-white/5'}`}
+              className={`rounded-[1.75rem] sm:rounded-[2.5rem] border border-white/10 overflow-hidden shadow-xl transition-all hover:border-white/20 ${post.verified ? 'bg-gradient-to-br from-cyan-900/20 to-black/40 border-cyan-500/30 ring-1 ring-cyan-500/10' : 'bg-white/5'}`}
             >
-              <div className="flex items-center gap-4 p-6 bg-black/30 backdrop-blur-md">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center font-black text-xl text-white shadow-xl">
+              <div className="flex items-center gap-3 sm:gap-4 px-4 py-3 sm:px-6 sm:py-4 bg-black/30 backdrop-blur-md">
+                <div className="w-11 h-11 sm:w-14 sm:h-14 shrink-0 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center font-black text-lg sm:text-xl text-white shadow-xl">
                   {post.name[0]}
                 </div>
                 <div className="flex-1">
@@ -427,8 +427,8 @@ const DiariesSection: React.FC<DiariesSectionProps> = ({
                   <div className="text-xs text-white/30 font-medium">{post.date}</div>
                 </div>
               </div>
-              <div className="p-8 bg-black/85 backdrop-blur-sm border-t border-white/5 text-white text-lg leading-relaxed whitespace-pre-wrap break-words">{post.text}</div>
-              <div className="p-4 bg-black/10 border-t border-white/5 px-8 flex justify-between items-center">
+              <div className="px-5 py-4 sm:px-8 sm:py-6 bg-black/85 backdrop-blur-sm border-t border-white/5 text-white text-base sm:text-lg leading-relaxed whitespace-pre-wrap break-words">{post.text}</div>
+              <div className="py-2 px-4 sm:px-8 bg-black/10 border-t border-white/5 flex justify-between items-center">
                 <button
                   onClick={() => toggleLike(extendedPost)}
                   className={`flex items-center gap-2 transition-all font-black py-2 px-4 rounded-full ${liked || post.likes > 0 ? 'bg-red-500/10 text-red-500' : 'text-white/20 hover:text-white hover:bg-white/5'}`}
