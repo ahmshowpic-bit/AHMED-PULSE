@@ -141,6 +141,12 @@ const useAccentColors = (src: string) => {
   return colors;
 };
 
+const rgbStr = (c: RGB, k = 1) =>
+  `rgb(${Math.round(c[0] * k)},${Math.round(c[1] * k)},${Math.round(c[2] * k)})`;
+
+const rgbToHex = (c: RGB) =>
+  '#' + c.map((v) => Math.round(v).toString(16).padStart(2, '0')).join('');
+
 const PlayerBar: React.FC<PlayerBarProps> = ({ currentSong, isPlaying, audioRef, onTogglePlay, onNext, onPrev }) => {
   // === أهم تعديل في الأداء ===
   // "progress" و"volume" و"isExpanded" أصبحت حالة محلية بالكامل جوه
@@ -169,6 +175,11 @@ const PlayerBar: React.FC<PlayerBarProps> = ({ currentSong, isPlaying, audioRef,
     '--pb-b': accentB.join(','),
   } as React.CSSProperties;
 
+  // لون أعلى المشغل = لون شريط الحالة (الساعة والبطارية والشبكة) عشان يندمجوا
+  const [topH, topS] = rgbToHsl(accentA);
+  const topRgb = hslToRgb(topH, clamp(topS * 0.7, 0.3, 0.7), 0.2);
+  const topHex = rgbToHex(topRgb);
+
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -196,6 +207,29 @@ const PlayerBar: React.FC<PlayerBarProps> = ({ currentSong, isPlaying, audioRef,
       audioRef.current.volume = volume;
     }
   }, [volume, audioRef]);
+
+  // شريط الحالة بياخد لون المشغل وهو مفتوح، ويرجع لونه الأصلي لما يتقفل
+  useEffect(() => {
+    if (!isExpanded) return;
+    const metas = Array.from(document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]'));
+    let created: HTMLMetaElement | null = null;
+    if (metas.length === 0) {
+      created = document.createElement('meta');
+      created.name = 'theme-color';
+      document.head.appendChild(created);
+      metas.push(created);
+    }
+    const originals = metas.map((m) => m.getAttribute('content'));
+    metas.forEach((m) => m.setAttribute('content', topHex));
+    return () => {
+      metas.forEach((m, i) => {
+        const o = originals[i];
+        if (o === null) m.removeAttribute('content');
+        else m.setAttribute('content', o);
+      });
+      if (created && created.parentNode) created.parentNode.removeChild(created);
+    };
+  }, [isExpanded, topHex]);
 
   const onSeek = (e: React.MouseEvent<HTMLDivElement>) => {
     e.stopPropagation();
@@ -316,7 +350,7 @@ const PlayerBar: React.FC<PlayerBarProps> = ({ currentSong, isPlaying, audioRef,
   const currentTime = (progress / 100) * duration;
   const remaining = Math.max(0, duration - currentTime);
   const isActive = isExpanded && isPlaying;
-  const artSize = 'min(86vw, 40dvh, 440px)';
+  const artSize = 'min(84vw, 38dvh, 440px)';
   const volPct = Math.round(volume * 100);
 
   return (
@@ -402,24 +436,24 @@ const PlayerBar: React.FC<PlayerBarProps> = ({ currentSong, isPlaying, audioRef,
       >
         <style>{PLAYER_CSS}</style>
 
-        {/* Atmosphere: لون الغلاف بيتدرج لأسود */}
-        <div className="absolute inset-0 bg-black z-0" />
+        {/* Atmosphere: أول سطر في الخلفية = نفس لون شريط الحالة بالظبط، وبعدين بيتدرج لأسود */}
         <div
           className="absolute inset-0 z-0"
+          style={{
+            background: `linear-gradient(to bottom, ${rgbStr(topRgb)} 0%, ${rgbStr(topRgb, 0.5)} 38%, #050505 78%, #000000 100%)`,
+          }}
+        />
+        <div
+          className="absolute inset-0 z-0 pointer-events-none"
           style={{
             backgroundImage: `url(${cover})`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
             filter: 'blur(40px) saturate(1.5)',
             transform: 'scale(1.3)',
-            opacity: 0.55,
-          }}
-        />
-        <div
-          className="absolute inset-0 z-0 pointer-events-none"
-          style={{
-            background:
-              'linear-gradient(to bottom, rgba(var(--pb-b),0.35) 0%, rgba(0,0,0,0.55) 45%, rgba(0,0,0,0.94) 100%)',
+            opacity: 0.4,
+            WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, transparent 20%, #000 55%)',
+            maskImage: 'linear-gradient(to bottom, transparent 0%, transparent 20%, #000 55%)',
           }}
         />
 
@@ -456,7 +490,7 @@ const PlayerBar: React.FC<PlayerBarProps> = ({ currentSong, isPlaying, audioRef,
           className="relative z-10 flex-1 overflow-y-auto outline-none"
           style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}
         >
-          <div className="min-h-full mx-auto w-full max-w-[460px] px-6 flex flex-col justify-center gap-5 py-2">
+          <div className="min-h-full mx-auto w-full max-w-[460px] px-6 flex flex-col justify-center gap-4 py-2">
 
             {/* ===== الغلاف ===== */}
             <div className="relative shrink-0 mx-auto" style={{ width: artSize, height: artSize }}>
@@ -650,7 +684,7 @@ const PlayerBar: React.FC<PlayerBarProps> = ({ currentSong, isPlaying, audioRef,
                 تكرار
               </button>
               <span className="flex items-center px-4 h-9 rounded-full text-xs font-bold uppercase tracking-widest border border-white/10 bg-white/[0.08] text-white/60">
-                Ahmed Pulse · High Quality
+                High Quality
               </span>
             </div>
           </div>
