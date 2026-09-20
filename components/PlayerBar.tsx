@@ -516,22 +516,38 @@ const PlayerBar: React.FC<PlayerBarProps> = ({ currentSong, isPlaying, audioRef,
                 onPointerMove={handleArtMove}
                 onPointerUp={handleArtUp}
                 onPointerCancel={handleArtCancel}
-                className="relative w-full h-full rounded-[28px] cursor-pointer outline-none select-none"
+                className="relative w-full h-full rounded-[28px] cursor-pointer outline-none select-none overflow-hidden isolate"
                 style={{
                   touchAction: 'pan-y',
                   transform: `translateX(${swipeX}px) rotate(${swipeX / 30}deg) scale(${isPlaying ? 1 : 0.84})`,
                   transition: swipeX !== 0 ? 'none' : 'transform 0.6s cubic-bezier(0.34,1.56,0.64,1)',
-                  boxShadow: '0 24px 60px rgba(0,0,0,0.5)',
+                  // ظل متعدد الطبقات (تلامس قريب + عمق بعيد) = إحساس بروز 3D بدل ظل مسطح واحد
+                  boxShadow:
+                    '0 2px 4px rgba(0,0,0,0.35), 0 14px 26px rgba(0,0,0,0.45), 0 34px 70px rgba(0,0,0,0.55)',
+                  // بيجبر المتصفح/الويب فيو يقص الحواف الدائرية بمساحة ناعمة مضادة للتسنين
+                  // بدل الاعتماد بس على overflow+border-radius اللي بيبين مسنن مع الـ transform/scale
+                  WebkitMaskImage: '-webkit-radial-gradient(white, black)',
+                  maskImage: 'radial-gradient(white, black)',
                 }}
               >
                 <div
                   key={currentSong?.id ?? 'no-song'}
-                  className="pb-anim absolute inset-0 rounded-[28px] bg-cover bg-center border border-white/10"
+                  className="pb-anim absolute inset-0 bg-cover bg-center"
                   style={{
                     backgroundImage: `url(${cover})`,
                     animation: 'pb-swap-in 0.6s cubic-bezier(0.16,1,0.3,1) both',
                   }}
                 />
+                {/* لمعة علوية + تظليل سفلي فوق الصورة = إحساس عمق/3D خفيف */}
+                <div
+                  className="absolute inset-0 pointer-events-none"
+                  style={{
+                    background:
+                      'linear-gradient(180deg, rgba(255,255,255,0.24) 0%, rgba(255,255,255,0.07) 10%, rgba(255,255,255,0) 28%, rgba(0,0,0,0) 62%, rgba(0,0,0,0.30) 100%)',
+                  }}
+                />
+                {/* حافة رفيعة تفصل الغلاف عن الخلفية بوضوح (بديل الـ border القديم، بس جوه القص) */}
+                <div className="absolute inset-0 pointer-events-none rounded-[28px] border border-white/12" />
               </div>
             </div>
 
