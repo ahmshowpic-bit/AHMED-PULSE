@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Play, Pause, SkipBack, SkipForward, Volume2, ChevronDown, Maximize2 } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Volume1, Volume2, ChevronDown, Maximize2, Repeat } from 'lucide-react';
 import { Song } from '../types';
 
 interface PlayerBarProps {
@@ -12,13 +12,13 @@ interface PlayerBarProps {
 }
 
 /* ============================================================
-   PULSE ORBIT — المشغل الممتد
+   NOW PLAYING — المشغل الممتد (بروح واجهة تشغيل الآيفون)
    ------------------------------------------------------------
-   • الأسطوانة (الغلاف) بتلف في المركز، وحواليها "مدار" من 72 علامة.
-   • العلامات بتنور بلون الأغنية أثناء التقدم، والقمر الصغير (Knob)
-     بيتسحب على الحلقة للتقديم/التأخير.
-   • ألوان الواجهة كلها بتتستخرج من غلاف الأغنية (وبترجع للذهبي لو
-     الصورة مش بتسمح بالقراءة بسبب CORS).
+   • الغلاف هو البطل: بيكبر وقت التشغيل ويصغّر بنط "سبرينج" وقت الإيقاف.
+   • اسحب الغلاف يمين/شمال = أغنية تالية/سابقة، وضغطة عليه = تشغيل/إيقاف.
+   • شريط التقدم بيتخن وقت اللمس ومعاه فقاعة الوقت أثناء السحب.
+   • اسحب الشريط العلوي لتحت عشان تقفل المشغل.
+   • ألوان الخلفية بتتاخد من غلاف الأغنية (وبترجع للذهبي لو CORS منع).
    ============================================================ */
 
 type RGB = [number, number, number];
@@ -26,26 +26,19 @@ type RGB = [number, number, number];
 const DEFAULT_COVER = 'https://images.unsplash.com/photo-1614850523459-c2f4c699c52e?q=80&w=600';
 const FALLBACK_A: RGB = [245, 158, 11];
 const FALLBACK_B: RGB = [194, 65, 12];
-const TICKS = 72;
 
-const KEYFRAMES = `
-@keyframes pb-spin { to { transform: rotate(360deg); } }
-@keyframes pb-float-a {
-  from { transform: translate3d(-6%, -4%, 0) scale(1); }
-  to   { transform: translate3d(12%, 10%, 0) scale(1.25); }
-}
-@keyframes pb-float-b {
-  from { transform: translate3d(6%, 4%, 0) scale(1.1); }
-  to   { transform: translate3d(-12%, -10%, 0) scale(0.9); }
-}
-@keyframes pb-breathe { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+const PLAYER_CSS = `
 @keyframes pb-swap-in {
-  from { opacity: 0; transform: translateY(12px) scale(0.96); filter: blur(6px); }
+  from { opacity: 0; transform: scale(0.96); filter: blur(6px); }
   to   { opacity: 1; transform: none; filter: none; }
 }
-@media (prefers-reduced-motion: reduce) {
-  .pb-anim { animation: none !important; }
-}
+@keyframes pb-eq { 0%, 100% { transform: scaleY(0.3); } 50% { transform: scaleY(1); } }
+.pb-range { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; border-radius: 9999px; outline: none; cursor: pointer; transition: height .2s ease; }
+.pb-range:hover, .pb-range:active { height: 10px; }
+.pb-range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 0; height: 0; }
+.pb-range::-moz-range-thumb { width: 0; height: 0; border: 0; background: transparent; }
+.pb-range::-moz-range-track { background: transparent; }
+@media (prefers-reduced-motion: reduce) { .pb-anim { animation: none !important; } }
 `;
 
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
@@ -159,11 +152,15 @@ const PlayerBar: React.FC<PlayerBarProps> = ({ currentSong, isPlaying, audioRef,
   const [volume, setVolume] = useState(0.8);
   const [isExpanded, setIsExpanded] = useState(false);
   const [duration, setDuration] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
+  const [isScrubbing, setIsScrubbing] = useState(false);
+  const [loop, setLoop] = useState(false);
+  const [dragY, setDragY] = useState(0);
+  const [swipeX, setSwipeX] = useState(0);
 
-  const stageRef = useRef<HTMLDivElement>(null);
-  const draggingRef = useRef(false);
-  const lastRatioRef = useRef(0);
+  const barRef = useRef<HTMLDivElement>(null);
+  const scrubbingRef = useRef(false);
+  const sheetStartYRef = useRef<number | null>(null);
+  const swipeRef = useRef<{ x: number; moved: boolean } | null>(null);
 
   const cover = currentSong?.image || DEFAULT_COVER;
   const { a: accentA, b: accentB } = useAccentColors(cover);
@@ -209,7 +206,7 @@ const PlayerBar: React.FC<PlayerBarProps> = ({ currentSong, isPlaying, audioRef,
     audioRef.current.currentTime = percentage * audioRef.current.duration;
   };
 
-  // --- تحكم المدار (الحلقة الدائرية) ---
+  // --- شريط التقدم الكبير (سحب ولمس) ---
   const seekToRatio = useCallback((ratio: number) => {
     const audio = audioRef.current;
     if (!audio || !audio.duration) return;
@@ -218,64 +215,109 @@ const PlayerBar: React.FC<PlayerBarProps> = ({ currentSong, isPlaying, audioRef,
     setProgress(r * 100);
   }, [audioRef]);
 
-  // يحول مكان الإصبع إلى نسبة من 0 إلى 1 (0 = أعلى الحلقة، باتجاه عقارب الساعة)
-  const ratioFromPointer = (clientX: number, clientY: number, avoidWrap: boolean): number => {
-    const el = stageRef.current;
-    if (!el) return lastRatioRef.current;
+  // الشريط بيتملى من اليمين (زي الشريط الصغير وباقي الموقع)
+  const ratioFromBar = (clientX: number): number => {
+    const el = barRef.current;
+    if (!el) return 0;
     const rect = el.getBoundingClientRect();
-    const dx = clientX - (rect.left + rect.width / 2);
-    const dy = clientY - (rect.top + rect.height / 2);
-    let deg = (Math.atan2(dy, dx) * 180) / Math.PI + 90;
-    if (deg < 0) deg += 360;
-    let ratio = deg / 360;
-    if (avoidWrap) {
-      const prev = lastRatioRef.current;
-      if (prev > 0.75 && ratio < 0.25) ratio = 1;
-      else if (prev < 0.25 && ratio > 0.75) ratio = 0;
-    }
-    return ratio;
+    return clamp((rect.right - clientX) / rect.width, 0, 1);
   };
 
-  const handleRingDown = (e: React.PointerEvent<HTMLDivElement>) => {
+  const handleBarDown = (e: React.PointerEvent<HTMLDivElement>) => {
     e.currentTarget.setPointerCapture(e.pointerId);
-    draggingRef.current = true;
-    setIsDragging(true);
-    const r = ratioFromPointer(e.clientX, e.clientY, false);
-    lastRatioRef.current = r;
-    seekToRatio(r);
+    scrubbingRef.current = true;
+    setIsScrubbing(true);
+    seekToRatio(ratioFromBar(e.clientX));
   };
-
-  const handleRingMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!draggingRef.current) return;
-    const r = ratioFromPointer(e.clientX, e.clientY, true);
-    lastRatioRef.current = r;
-    seekToRatio(r);
+  const handleBarMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!scrubbingRef.current) return;
+    seekToRatio(ratioFromBar(e.clientX));
   };
-
-  const handleRingUp = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!draggingRef.current) return;
-    draggingRef.current = false;
-    setIsDragging(false);
+  const handleBarUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!scrubbingRef.current) return;
+    scrubbingRef.current = false;
+    setIsScrubbing(false);
     try { e.currentTarget.releasePointerCapture(e.pointerId); } catch { /* already released */ }
   };
-
-  const handleRingKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
+  const handleBarKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
     const audio = audioRef.current;
     if (!audio || !audio.duration) return;
-    if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
+    // الاتجاه معكوس لأن الشريط بيتملى من اليمين
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
       audio.currentTime = Math.min(audio.duration, audio.currentTime + 5);
       e.preventDefault();
-    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
+    } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
       audio.currentTime = Math.max(0, audio.currentTime - 5);
       e.preventDefault();
     }
   };
 
+  // --- الغلاف: ضغطة = تشغيل/إيقاف، سحب يمين/شمال = التالي/السابق ---
+  const handleArtDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    swipeRef.current = { x: e.clientX, moved: false };
+  };
+  const handleArtMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const s = swipeRef.current;
+    if (!s) return;
+    const dx = e.clientX - s.x;
+    if (Math.abs(dx) > 8) s.moved = true;
+    if (s.moved) setSwipeX(dx);
+  };
+  const handleArtUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    const s = swipeRef.current;
+    swipeRef.current = null;
+    try { e.currentTarget.releasePointerCapture(e.pointerId); } catch { /* already released */ }
+    setSwipeX(0);
+    if (!s) return;
+    const dx = e.clientX - s.x;
+    if (Math.abs(dx) > 70) {
+      if (dx < 0) onNext(); else onPrev();
+    } else if (!s.moved) {
+      onTogglePlay();
+    }
+  };
+  const handleArtCancel = () => {
+    swipeRef.current = null;
+    setSwipeX(0);
+  };
+  const handleArtKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onTogglePlay();
+    }
+  };
+
+  // --- اسحب الشريط العلوي لتحت لإغلاق المشغل ---
+  const handleSheetDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if ((e.target as HTMLElement).closest('button')) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    sheetStartYRef.current = e.clientY;
+  };
+  const handleSheetMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (sheetStartYRef.current === null) return;
+    setDragY(Math.max(0, e.clientY - sheetStartYRef.current));
+  };
+  const handleSheetUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (sheetStartYRef.current === null) return;
+    const dy = Math.max(0, e.clientY - sheetStartYRef.current);
+    sheetStartYRef.current = null;
+    try { e.currentTarget.releasePointerCapture(e.pointerId); } catch { /* already released */ }
+    setDragY(0);
+    if (dy > 110) setIsExpanded(false);
+  };
+
+  const toggleLoop = () => {
+    const next = !loop;
+    setLoop(next);
+    if (audioRef.current) audioRef.current.loop = next;
+  };
+
   const currentTime = (progress / 100) * duration;
-  const litCount = Math.ceil((progress / 100) * TICKS);
-  // الحركات بتشتغل بس لما المشغل الممتد مفتوح والأغنية شغالة
+  const remaining = Math.max(0, duration - currentTime);
   const isActive = isExpanded && isPlaying;
-  const stageSize = 'min(80vw, 44dvh, 440px)';
+  const artSize = 'min(86vw, 40dvh, 440px)';
+  const volPct = Math.round(volume * 100);
 
   return (
     <>
@@ -349,71 +391,64 @@ const PlayerBar: React.FC<PlayerBarProps> = ({ currentSong, isPlaying, audioRef,
         </div>
       </div>
 
-      {/* --- Full Screen Expanded Player : PULSE ORBIT --- */}
+      {/* --- Full Screen Expanded Player : NOW PLAYING --- */}
       <div
         className={`fixed inset-0 z-[200] flex flex-col overflow-hidden transition-[transform,opacity,visibility] duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${isExpanded ? 'visible translate-y-0 opacity-100' : 'invisible translate-y-[100%] opacity-0 pointer-events-none'}`}
-        style={themeVars}
+        style={{
+          ...themeVars,
+          ...(dragY > 0 ? { transform: `translateY(${dragY}px)`, transition: 'none' } : {}),
+        }}
         aria-hidden={!isExpanded}
       >
-        <style>{KEYFRAMES}</style>
+        <style>{PLAYER_CSS}</style>
 
-        {/* Atmosphere: غلاف الأغنية مطموس + شفق بلوني */}
+        {/* Atmosphere: لون الغلاف بيتدرج لأسود */}
         <div className="absolute inset-0 bg-black z-0" />
         <div
-          className="absolute inset-0 z-0 opacity-45"
+          className="absolute inset-0 z-0"
           style={{
             backgroundImage: `url(${cover})`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
-            filter: 'blur(40px) saturate(1.6)',
-            transform: 'scale(1.15)',
+            filter: 'blur(40px) saturate(1.5)',
+            transform: 'scale(1.3)',
+            opacity: 0.55,
           }}
         />
         <div
-          className="pb-anim absolute z-0 rounded-full pointer-events-none"
+          className="absolute inset-0 z-0 pointer-events-none"
           style={{
-            width: '60vmax',
-            height: '60vmax',
-            top: '-24vmax',
-            left: '-20vmax',
-            background: 'radial-gradient(circle, rgba(var(--pb-a),0.32), transparent 65%)',
-            animation: 'pb-float-a 18s ease-in-out infinite alternate',
-            animationPlayState: isActive ? 'running' : 'paused',
+            background:
+              'linear-gradient(to bottom, rgba(var(--pb-b),0.35) 0%, rgba(0,0,0,0.55) 45%, rgba(0,0,0,0.94) 100%)',
           }}
         />
-        <div
-          className="pb-anim absolute z-0 rounded-full pointer-events-none"
-          style={{
-            width: '56vmax',
-            height: '56vmax',
-            bottom: '-26vmax',
-            right: '-20vmax',
-            background: 'radial-gradient(circle, rgba(var(--pb-b),0.30), transparent 65%)',
-            animation: 'pb-float-b 22s ease-in-out infinite alternate',
-            animationPlayState: isActive ? 'running' : 'paused',
-          }}
-        />
-        <div className="absolute inset-0 z-0 bg-gradient-to-b from-black/40 via-transparent to-black/85 pointer-events-none" />
 
-        {/* Header */}
+        {/* Header: اسحبه لتحت للإغلاق */}
         <div
-          className="relative z-10 flex items-center justify-between px-5 pb-2"
-          style={{ paddingTop: 'max(1.25rem, env(safe-area-inset-top))' }}
+          className="relative z-10 shrink-0 select-none"
+          style={{ paddingTop: 'max(0.5rem, env(safe-area-inset-top))', touchAction: 'none' }}
+          onPointerDown={handleSheetDown}
+          onPointerMove={handleSheetMove}
+          onPointerUp={handleSheetUp}
+          onPointerCancel={handleSheetUp}
         >
-          <button
-            onClick={() => setIsExpanded(false)}
-            className="w-12 h-12 rounded-full bg-white/10 border border-white/15 flex items-center justify-center text-white hover:bg-white/20 active:scale-90 transition-all shadow-xl"
-            aria-label="إغلاق"
-          >
-            <ChevronDown size={26} />
-          </button>
-          <div className="flex flex-col items-center gap-1">
-            <div className="text-[10px] md:text-xs font-black tracking-[0.3em] text-white/40 uppercase">Playing From</div>
-            <div className="text-sm md:text-base font-bold tracking-widest" style={{ color: 'rgb(var(--pb-a))' }}>
-              {currentSong?.folder || "LIBRARY"}
+          <div className="mx-auto mt-1 mb-3 h-1.5 w-11 rounded-full bg-white/30" />
+          <div className="flex items-center justify-between px-5 pb-2">
+            <button
+              onClick={() => setIsExpanded(false)}
+              className="w-10 h-10 rounded-full bg-white/10 border border-white/10 flex items-center justify-center text-white hover:bg-white/20 active:scale-90 transition-all"
+              aria-label="إغلاق"
+            >
+              <ChevronDown size={22} />
+            </button>
+            <div className="flex flex-col items-center gap-0.5">
+              <div className="text-[10px] font-black tracking-[0.3em] text-white/40 uppercase">Playing From</div>
+              <div className="text-sm font-bold tracking-widest" style={{ color: 'rgb(var(--pb-a))' }}>
+                {currentSong?.folder || "LIBRARY"}
+              </div>
             </div>
+            <div className="w-10 h-10" /> {/* Spacer */}
           </div>
-          <div className="w-12 h-12" /> {/* Spacer */}
         </div>
 
         {/* Main Content */}
@@ -421,226 +456,202 @@ const PlayerBar: React.FC<PlayerBarProps> = ({ currentSong, isPlaying, audioRef,
           className="relative z-10 flex-1 overflow-y-auto outline-none"
           style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}
         >
-          <div className="min-h-full flex flex-col items-center justify-center gap-4 md:gap-6 px-4 py-3">
+          <div className="min-h-full mx-auto w-full max-w-[460px] px-6 flex flex-col justify-center gap-5 py-2">
 
-            {/* ===== المدار: الحلقة + الأسطوانة ===== */}
-            <div
-              ref={stageRef}
-              dir="ltr"
-              className="relative shrink-0 select-none"
-              style={{ width: stageSize, height: stageSize }}
-            >
-              {/* هالة تتنفس خلف الأسطوانة */}
+            {/* ===== الغلاف ===== */}
+            <div className="relative shrink-0 mx-auto" style={{ width: artSize, height: artSize }}>
+              {/* ظل ملوّن بلون الغلاف تحته */}
               <div
-                className="absolute inset-[6%] rounded-full pointer-events-none"
+                className="absolute inset-0 rounded-[28px] pointer-events-none"
                 style={{
-                  background: 'radial-gradient(circle, rgba(var(--pb-a),0.55), transparent 68%)',
-                  opacity: isPlaying ? 0.85 : 0.25,
-                  transition: 'opacity 1s ease',
+                  backgroundImage: `url(${cover})`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                  filter: 'blur(26px) saturate(1.4)',
+                  opacity: isPlaying ? 0.65 : 0.3,
+                  transform: `translateY(6%) scale(${isPlaying ? 0.92 : 0.78})`,
+                  transition: 'opacity 0.6s ease, transform 0.6s cubic-bezier(0.34,1.56,0.64,1)',
                 }}
               />
-
-              {/* منطقة السحب (تحت الأسطوانة) */}
               <div
+                role="button"
+                tabIndex={0}
+                aria-label="تشغيل/ايقاف"
+                onKeyDown={handleArtKey}
+                onPointerDown={handleArtDown}
+                onPointerMove={handleArtMove}
+                onPointerUp={handleArtUp}
+                onPointerCancel={handleArtCancel}
+                className="relative w-full h-full rounded-[28px] cursor-pointer outline-none select-none"
+                style={{
+                  touchAction: 'pan-y',
+                  transform: `translateX(${swipeX}px) rotate(${swipeX / 30}deg) scale(${isPlaying ? 1 : 0.84})`,
+                  transition: swipeX !== 0 ? 'none' : 'transform 0.6s cubic-bezier(0.34,1.56,0.64,1)',
+                  boxShadow: '0 24px 60px rgba(0,0,0,0.5)',
+                }}
+              >
+                <div
+                  key={currentSong?.id ?? 'no-song'}
+                  className="pb-anim absolute inset-0 rounded-[28px] bg-cover bg-center border border-white/10"
+                  style={{
+                    backgroundImage: `url(${cover})`,
+                    animation: 'pb-swap-in 0.6s cubic-bezier(0.16,1,0.3,1) both',
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* ===== الاسم + مؤشر الإيقاع ===== */}
+            <div className="flex items-center justify-between gap-3">
+              <div
+                key={`title-${currentSong?.id ?? 'no-song'}`}
+                className="pb-anim min-w-0"
+                style={{ animation: 'pb-swap-in 0.6s cubic-bezier(0.16,1,0.3,1) both' }}
+              >
+                <h2
+                  className="font-black text-white truncate leading-tight tracking-tight"
+                  style={{ fontSize: 'clamp(1.4rem, 6vw, 2rem)' }}
+                >
+                  {currentSong?.name || "اختر أغنية للبدء"}
+                </h2>
+                <div className="text-base font-semibold text-white/60 truncate mt-0.5">
+                  {currentSong?.folder || "AHMED PULSE"}
+                </div>
+              </div>
+              <div className="flex items-end gap-[3px] h-5 shrink-0" aria-hidden="true">
+                {[0, 1, 2, 3].map((i) => (
+                  <span
+                    key={i}
+                    className="pb-anim w-[3px] h-full rounded-full"
+                    style={{
+                      background: 'rgb(var(--pb-a))',
+                      transformOrigin: 'bottom',
+                      transform: isActive ? undefined : 'scaleY(0.3)',
+                      animation: isActive ? `pb-eq ${0.7 + i * 0.16}s ease-in-out ${-i * 0.2}s infinite` : undefined,
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* ===== شريط التقدم ===== */}
+            <div>
+              <div
+                ref={barRef}
+                dir="rtl"
                 role="slider"
                 tabIndex={0}
                 aria-label="موضع التشغيل"
                 aria-valuemin={0}
                 aria-valuemax={100}
                 aria-valuenow={Math.round(progress)}
-                className="absolute inset-0 rounded-full cursor-pointer outline-none"
+                className="relative py-3 cursor-pointer outline-none"
                 style={{ touchAction: 'none' }}
-                onPointerDown={handleRingDown}
-                onPointerMove={handleRingMove}
-                onPointerUp={handleRingUp}
-                onPointerCancel={handleRingUp}
-                onKeyDown={handleRingKey}
-              />
-
-              {/* علامات المدار + القمر */}
-              <svg
-                viewBox="0 0 200 200"
-                className="absolute inset-0 w-full h-full pointer-events-none overflow-visible"
-                aria-hidden="true"
+                onPointerDown={handleBarDown}
+                onPointerMove={handleBarMove}
+                onPointerUp={handleBarUp}
+                onPointerCancel={handleBarUp}
+                onKeyDown={handleBarKey}
               >
-                {Array.from({ length: TICKS }, (_, i) => {
-                  const major = i % 6 === 0;
-                  const lit = i < litCount;
-                  // النبض محصور في آخر 8 علامات منورة (ذيل الشهاب)
-                  const tail = isActive && lit && i >= litCount - 8;
-                  return (
-                    <line
-                      key={i}
-                      x1={100}
-                      y1={2}
-                      x2={100}
-                      y2={major ? 14 : 9}
-                      transform={`rotate(${(i / TICKS) * 360} 100 100)`}
-                      strokeWidth={major ? 2.2 : 1.6}
-                      strokeLinecap="round"
-                      className={tail ? 'pb-anim' : undefined}
-                      style={{
-                        stroke: lit ? 'rgb(var(--pb-a))' : 'rgba(255,255,255,0.16)',
-                        animation: tail ? `pb-breathe 1.6s ease-in-out ${(litCount - 1 - i) * 0.12}s infinite` : undefined,
-                      }}
-                    />
-                  );
-                })}
-                <g
-                  style={{
-                    transform: `rotate(${progress * 3.6}deg)`,
-                    transformOrigin: '100px 100px',
-                    transition: isDragging ? 'none' : 'transform 250ms linear',
-                  }}
-                >
-                  <circle
-                    cx={100}
-                    cy={6}
-                    r={isDragging ? 13 : 10}
-                    style={{ fill: 'rgba(var(--pb-a),0.35)' }}
-                  />
-                  <circle cx={100} cy={6} r={isDragging ? 7.5 : 5.5} fill="#ffffff" />
-                  <circle cx={100} cy={6} r={2.2} fill="rgb(var(--pb-a))" />
-                </g>
-              </svg>
-
-              {/* الأسطوانة: ضغطة عليها = تشغيل / إيقاف */}
-              <div
-                role="button"
-                aria-label="تشغيل/ايقاف"
-                onClick={(e) => onTogglePlay(e)}
-                className="absolute rounded-full cursor-pointer"
-                style={{
-                  inset: '13%',
-                  transform: isPlaying ? 'scale(1)' : 'scale(0.94)',
-                  transition: 'transform 1s cubic-bezier(0.16,1,0.3,1)',
-                  boxShadow: '0 30px 70px rgba(0,0,0,0.85)',
-                }}
-              >
-                {/* الجزء اللي بيلف */}
                 <div
-                  className="pb-anim absolute inset-0 rounded-full"
-                  style={{
-                    animation: 'pb-spin 16s linear infinite',
-                    animationPlayState: isActive ? 'running' : 'paused',
-                    willChange: 'transform',
-                    background:
-                      'repeating-radial-gradient(circle at center, #0a0a0a 0px, #0a0a0a 2px, #171717 2.6px, #0a0a0a 3.6px)',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                  }}
+                  className="relative w-full rounded-full bg-white/20 overflow-hidden"
+                  style={{ height: isScrubbing ? 12 : 6, transition: 'height 0.2s ease' }}
                 >
                   <div
-                    key={currentSong?.id ?? 'no-song'}
-                    className="pb-anim absolute rounded-full bg-cover bg-center"
-                    style={{
-                      inset: '29%',
-                      backgroundImage: `url(${cover})`,
-                      boxShadow: '0 0 0 4px rgba(var(--pb-a),0.9), 0 0 0 7px #0a0a0a',
-                      animation: 'pb-swap-in 0.8s cubic-bezier(0.16,1,0.3,1) both',
-                    }}
-                  />
-                  <div
-                    className="absolute rounded-full bg-black border border-white/20"
-                    style={{ left: '47.5%', top: '47.5%', width: '5%', height: '5%' }}
+                    className="absolute top-0 right-0 h-full rounded-full bg-white"
+                    style={{ width: `${progress}%`, transition: isScrubbing ? 'none' : 'width 200ms linear' }}
                   />
                 </div>
-
-                {/* لمعة زجاجية ثابتة (مش بتلف) */}
+                {/* المقبض + فقاعة الوقت (بتظهر وقت السحب بس) */}
                 <div
-                  className="absolute inset-0 rounded-full pointer-events-none"
+                  className="absolute top-1/2 pointer-events-none"
                   style={{
-                    background:
-                      'conic-gradient(from 30deg, transparent 0deg, rgba(255,255,255,0.10) 35deg, transparent 70deg, transparent 180deg, rgba(255,255,255,0.07) 215deg, transparent 250deg)',
-                    boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.06), inset 0 0 30px rgba(0,0,0,0.6)',
-                  }}
-                />
-
-                {/* أيقونة التشغيل تظهر وقت الإيقاف */}
-                <div
-                  className="absolute rounded-full flex items-center justify-center bg-black/55 border border-white/20 text-white pointer-events-none"
-                  style={{
-                    inset: '36%',
-                    opacity: isPlaying ? 0 : 1,
-                    transform: isPlaying ? 'scale(0.6)' : 'scale(1)',
-                    transition: 'opacity 0.4s ease, transform 0.4s ease',
+                    right: `${progress}%`,
+                    transform: 'translate(50%, -50%)',
+                    opacity: isScrubbing ? 1 : 0,
+                    transition: 'opacity 0.2s ease',
                   }}
                 >
-                  <Play size={26} fill="currentColor" className="ml-0.5" />
+                  <div className="w-5 h-5 rounded-full bg-white shadow-lg" />
+                  <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-2.5 py-1 rounded-lg bg-white text-black text-xs font-bold tabular-nums whitespace-nowrap">
+                    <span dir="ltr">{formatTime(currentTime)}</span>
+                  </div>
                 </div>
+              </div>
+              <div dir="rtl" className="flex items-center justify-between text-xs font-medium tabular-nums text-white/55 -mt-1">
+                <span dir="ltr">{formatTime(currentTime)}</span>
+                <span dir="ltr">-{formatTime(remaining)}</span>
               </div>
             </div>
 
-            {/* ===== اسم الأغنية ===== */}
-            <div
-              key={`title-${currentSong?.id ?? 'no-song'}`}
-              className="pb-anim flex flex-col items-center gap-2 max-w-full text-center"
-              style={{ animation: 'pb-swap-in 0.7s cubic-bezier(0.16,1,0.3,1) both' }}
-            >
-              <h2
-                className="font-black text-white tracking-tighter drop-shadow-2xl leading-tight px-4"
-                style={{ fontSize: 'clamp(1.4rem, 5vw, 3.2rem)' }}
-              >
-                {currentSong?.name || "اختر أغنية للبدء"}
-              </h2>
-              <div className="flex items-center gap-3 flex-wrap justify-center">
-                <span className="bg-white/5 border border-white/10 px-3 py-1 rounded-full text-white/60 text-xs font-bold uppercase tracking-widest">High Quality</span>
-                <span className="font-bold uppercase tracking-[0.2em] text-sm" style={{ color: 'rgb(var(--pb-a))' }}>AHMED PULSE</span>
-              </div>
-            </div>
-
-            {/* الوقت */}
-            <div dir="ltr" className="flex items-center gap-2 font-mono text-xs tabular-nums text-white/45">
-              <span className="text-white/90">{formatTime(currentTime)}</span>
-              <span>/</span>
-              <span>{formatTime(duration)}</span>
-            </div>
-
-            {/* ===== شريط التحكم الزجاجي ===== */}
-            <div className="relative flex items-center justify-center gap-4 md:gap-8 rounded-[2.5rem] border border-white/10 bg-black/35 px-5 py-3 shadow-[0_20px_60px_rgba(0,0,0,0.5)]">
+            {/* ===== أزرار التحكم ===== */}
+            <div className="flex items-center justify-center gap-8 md:gap-12">
               <button
                 onClick={(e) => onPrev(e)}
-                className="w-14 h-14 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 active:scale-90 transition-all"
+                className="w-16 h-16 flex items-center justify-center text-white active:scale-90 active:opacity-70 transition-all"
                 aria-label="السابق"
               >
-                <SkipBack size={26} style={{ transform: 'scaleX(-1)' }} />
+                <SkipBack size={34} fill="currentColor" style={{ transform: 'scaleX(-1)' }} />
               </button>
-
               <button
                 onClick={(e) => onTogglePlay(e)}
-                className="rounded-full bg-white text-black flex items-center justify-center hover:scale-105 active:scale-95 transition-transform duration-300"
+                className="rounded-full bg-white text-black flex items-center justify-center hover:scale-105 active:scale-90 transition-transform duration-300"
                 style={{
-                  width: 'clamp(76px, 20vw, 96px)',
-                  height: 'clamp(76px, 20vw, 96px)',
-                  boxShadow: '0 0 40px rgba(var(--pb-a),0.55), 0 12px 30px rgba(0,0,0,0.5)',
+                  width: 'clamp(76px, 20vw, 88px)',
+                  height: 'clamp(76px, 20vw, 88px)',
+                  boxShadow: '0 0 40px rgba(var(--pb-a),0.45), 0 12px 30px rgba(0,0,0,0.5)',
                 }}
                 aria-label="تشغيل/ايقاف"
               >
                 {isPlaying ? <Pause size={38} fill="currentColor" /> : <Play size={38} fill="currentColor" className="ml-1" />}
               </button>
-
               <button
                 onClick={(e) => onNext(e)}
-                className="w-14 h-14 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 active:scale-90 transition-all"
+                className="w-16 h-16 flex items-center justify-center text-white active:scale-90 active:opacity-70 transition-all"
                 aria-label="التالي"
               >
-                <SkipForward size={26} style={{ transform: 'scaleX(-1)' }} />
+                <SkipForward size={34} fill="currentColor" style={{ transform: 'scaleX(-1)' }} />
               </button>
             </div>
 
-            {/* الصوت (للشاشات الكبيرة) */}
-            <div className="hidden md:flex items-center gap-3 bg-white/5 border border-white/10 rounded-full px-4 py-2">
-              <Volume2 size={18} className="text-white/60" />
+            {/* ===== الصوت ===== */}
+            <div dir="rtl" className="flex items-center gap-3 text-white/60">
+              <Volume1 size={18} className="shrink-0" />
               <input
                 type="range"
+                dir="rtl"
                 min="0"
                 max="1"
                 step="0.01"
                 value={volume}
                 onChange={e => setVolume(parseFloat(e.target.value))}
-                className="w-40 h-1 rounded-full cursor-pointer"
-                style={{ accentColor: 'rgb(var(--pb-a))' }}
+                className="pb-range"
+                style={{
+                  background: `linear-gradient(to left, #ffffff ${volPct}%, rgba(255,255,255,0.22) ${volPct}%)`,
+                }}
                 aria-label="مستوى الصوت"
               />
+              <Volume2 size={18} className="shrink-0" />
+            </div>
+
+            {/* ===== شرائح صغيرة ===== */}
+            <div className="flex items-center justify-center gap-2 flex-wrap">
+              <button
+                onClick={toggleLoop}
+                aria-pressed={loop}
+                className="flex items-center gap-1.5 px-4 h-9 rounded-full text-xs font-bold border transition-colors active:scale-95"
+                style={
+                  loop
+                    ? { background: 'rgba(var(--pb-a),0.22)', borderColor: 'rgba(var(--pb-a),0.6)', color: 'rgb(var(--pb-a))' }
+                    : { background: 'rgba(255,255,255,0.08)', borderColor: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.75)' }
+                }
+              >
+                <Repeat size={15} />
+                تكرار
+              </button>
+              <span className="flex items-center px-4 h-9 rounded-full text-xs font-bold uppercase tracking-widest border border-white/10 bg-white/[0.08] text-white/60">
+                Ahmed Pulse · High Quality
+              </span>
             </div>
           </div>
         </div>
