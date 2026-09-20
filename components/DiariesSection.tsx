@@ -357,7 +357,7 @@ const DiariesSection: React.FC<DiariesSectionProps> = ({
   }, [isOffline, visitorId]);
 
   return (
-    <section className={`${active ? 'block' : 'hidden'}`}>
+    <section className={`${active ? 'block bg-black rounded-[3rem] p-4 md:p-8' : 'hidden'}`}>
       <h2 className="text-4xl font-black mb-12 mt-8 flex items-center gap-4">
         <Users className="text-cyan-400" size={36} /> المساحة الحرة
       </h2>
